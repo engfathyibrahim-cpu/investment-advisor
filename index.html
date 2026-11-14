@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investment Advisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f7fa; --panel:#ffffff; --panel2:#f1f4f8; --line:#e2e7ee; --text:#14202e; --muted:#5b6878; --dim:#8794a5;
+  --buy:#15803d; --buy-bg:#dcfce7; --sell:#dc2626; --sell-bg:#fee2e2; --hold:#b45309; --hold-bg:#fef3c7;
+  --accent:#2563eb; --accent-bg:#e8f0ff;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cur2{color:var(--muted);font-size:.8em;font-weight:400;margin-left:6px;padding-left:6px;border-left:1px solid var(--line)}
+.stat b,.kv b{white-space:normal}
+.stat b .cur2,.kv b .cur2,.px .cur2{display:inline-block}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);z-index:20;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand .logo{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#22c55e)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted);background:var(--panel)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--hold);box-shadow:0 0 0 3px rgba(232,179,58,.18)}
+.dot.live{background:var(--buy);box-shadow:0 0 0 3px rgba(34,197,94,.18);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.spacer{flex:1}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:16px 20px;max-width:1500px;margin:0 auto}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(20,32,46,.04)}
+.card h2{margin:0 0 4px;font-size:15px;font-weight:600}
+.card .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media(max-width:800px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
+.inp{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none;width:100%}
+.inp:focus{border-color:var(--accent)}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:none;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;white-space:nowrap}
+.seg button.on{background:var(--accent-bg);color:var(--text);box-shadow:inset 0 0 0 1px rgba(37,99,235,.45)}
+.weights{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+@media(max-width:800px){.weights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.w label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+.w label b{color:var(--text);font-family:var(--mono);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
+.tog{padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12px;color:var(--text)}
+.tog.off{color:var(--dim);text-decoration:line-through;background:transparent}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:1750px){.grid2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);font-weight:500;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+th:nth-child(1),th:nth-child(2),td:nth-child(1),td:nth-child(2){text-align:left}
+td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+tbody tr{cursor:pointer;transition:background .12s}
+tbody tr:hover{background:var(--panel2)}
+.sym{font-weight:600}
+.nm{font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.pill.BUY{background:var(--buy-bg);color:var(--buy)} .pill.SELL{background:var(--sell-bg);color:var(--sell)} .pill.HOLD{background:var(--hold-bg);color:var(--hold)}
+.up{color:var(--buy)} .down{color:var(--sell)}
+.flash-up{animation:fu .7s} .flash-down{animation:fd .7s}
+@keyframes fu{from{background:rgba(22,163,74,.18)}to{background:transparent}}
+@keyframes fd{from{background:rgba(220,38,38,.15)}to{background:transparent}}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;width:48px;display:inline-block;vertical-align:middle;margin-left:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.side{display:flex;flex-direction:column;gap:12px}
+.alt{cursor:pointer;transition:border-color .15s}
+.alt:hover{border-color:var(--accent)}
+.alt .top{display:flex;justify-content:space-between;align-items:flex-start}
+.alt .px{font-size:22px;font-weight:600;margin:6px 0 2px}
+.alt .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:10px;font-size:12px}
+.kv span{color:var(--muted)} .kv b{font-family:var(--mono);font-weight:500;display:block;color:var(--text)}
+.plan-row{display:grid;grid-template-columns:1.4fr .8fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.plan-row.h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.plan-row > :not(:first-child){text-align:right}
+.note{font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px}
+.note b{color:var(--text)}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(20,32,46,.35);display:none;z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 12px}
+.scrim.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(1080px,100%);padding:22px}
+.mh{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.mh h3{margin:0;font-size:20px}
+.close{margin-left:auto;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.bigpill{font-size:15px;padding:6px 16px}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:16px 0}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font-family:var(--mono);font-size:16px;font-weight:600;margin-top:2px}
+.stat small{font-size:11px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.sec{margin-top:18px}
+.sec h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.fac{display:grid;grid-template-columns:110px 1fr 40px;gap:10px;align-items:center;margin:7px 0;font-size:13px}
+.fac .tr{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.fac .tr i{display:block;height:100%}
+.fac .det{grid-column:2/4;font-size:11.5px;color:var(--muted);margin-top:-4px}
+.just p{margin:0 0 8px;font-size:13.5px}
+.conf{display:flex;align-items:center;gap:8px}
+.ring{--p:50;width:54px;height:54px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--panel2) 0);display:grid;place-items:center}
+.ring b{width:42px;height:42px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-family:var(--mono);font-size:13px}
+.tbl-s td,.tbl-s th{padding:6px 5px;font-size:12.5px}
+.disc{font-size:11.5px;color:var(--dim);margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.src{display:flex;gap:6px;align-items:center}
+.src select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px}
+.tabs{display:flex;gap:6px;align-items:center}
+.small{font-size:12px}
+.hint{font-size:11px;color:var(--dim)}
+
+.loading{position:fixed;inset:0;background:rgba(245,247,250,.94);z-index:60;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading.hide{display:none}
+.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.addbox{display:flex;gap:6px}
+.addbox input{width:150px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px}
+.btn:disabled{opacity:.5}
+.news a{color:var(--text);text-decoration:none}
+.news a:hover{text-decoration:underline}
+.news li{margin:0 0 8px;font-size:13px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.news ul{padding:0;margin:0}
+.sent{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;white-space:nowrap}
+.sent.p{background:var(--buy-bg);color:var(--buy)} .sent.n{background:var(--sell-bg);color:var(--sell)} .sent.z{background:var(--panel2);color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:14px 4px}
+.hform{display:grid;grid-template-columns:1.2fr 1fr 1fr .8fr 1fr .8fr 1fr auto;gap:8px;align-items:end}
+@media(max-width:900px){.hform{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hform label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.hform .inp{padding:7px 8px}
+.hsum{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px;background:var(--panel)}
+.hsum h3{margin:0;font-size:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:12px 0}
+@media(max-width:900px){.hgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.verdict{padding:10px 12px;border-radius:8px;font-size:13.5px;margin:8px 0}
+.verdict.good{background:var(--buy-bg)} .verdict.bad{background:var(--sell-bg)} .verdict.mid{background:var(--hold-bg)}
+.lots td,.lots th{font-size:12.5px;padding:6px 5px}
+.xbtn{background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--muted);padding:2px 7px}
+.xbtn:hover{color:var(--sell);border-color:var(--sell)}
+.btn2{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px}
+.mini{width:70px}
+
+</style>
+</head>
+<body>
+<div class="loading" id="loading"><div class="spin"></div><div id="loadMsg" class="muted">Loading market data…</div><div class="hint" id="loadHint"></div></div>
+<header>
+  <div class="brand"><div class="logo"></div>Investment Advisor</div>
+  <span class="chip"><span class="dot live" id="liveDot"></span><span id="feedLabel">Connecting…</span></span>
+  <span class="chip mono" id="clock">--:--:--</span>
+  <span class="chip" id="mktUS">US —</span>
+  <span class="chip" id="mktSA">Tadawul —</span>
+  <span class="chip" id="finChip" style="display:none"></span>
+  <div class="spacer"></div>
+  <form class="addbox" id="addForm"><input class="inp mono" id="addSym" placeholder="Find: NVDA, 2222, BTC" autocomplete="off"><button class="btn" id="addBtn">Find</button></form>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="card">
+    <h2>Your investment</h2>
+    <div class="sub">Set the amount and how you invest. "Your picks" use your factor weights; "System picks" use the model's own weights for your horizon.</div>
+    <div class="controls">
+      <label class="f">Amount to invest (USD)
+        <input class="inp mono" id="amount" type="number" min="100" step="100" value="50000"><span class="hint mono" id="amtSar"></span></label>
+      <label class="f">Market
+        <div class="seg" id="mktSeg"><button type="button" data-v="US" class="on">USA</button><button type="button" data-v="SA">Saudi</button></div></label>
+      <label class="f">Risk tolerance
+        <div class="seg" id="riskSeg"><button type="button" data-v="low">Low</button><button type="button" data-v="mid" class="on">Medium</button><button type="button" data-v="high">High</button></div></label>
+      <label class="f">Investment horizon
+        <div class="seg" id="horSeg"><button type="button" data-v="short">Weeks</button><button type="button" data-v="mid" class="on">Months</button><button type="button" data-v="long">1 yr+</button></div></label>
+    </div>
+    <div class="weights" id="weights"></div>
+    <div class="chips" id="sectors"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>System picks · Top 10</h2><span class="hint" id="sysW"></span></div>
+      <div class="sub">Ranked by the model's composite score. Click any row for the full analysis.</div>
+      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th>Conf.</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="sysBody"></tbody></table>
+    </section>
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Your picks · Top 10</h2><span class="hint">Your weights &amp; filters</span></div>
+      <div class="sub">Same data, re-ranked using the weights and sectors you set above.</div>
+      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th>Conf.</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="usrBody"></tbody></table>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><h2>Suggested plan for your <span class="mono" id="amtLabel"></span></h2>
+      <div class="sub" style="margin:0">How the amount would be split across the BUY calls, staged into tranches.</div></div>
+      <div class="seg" id="planSeg" style="width:240px"><button type="button" data-v="sys" class="on">System picks</button><button type="button" data-v="usr">Your picks</button></div>
+    </div>
+    <div id="plan" style="margin-top:12px"></div>
+  </section>
+
+
+  <section class="card" style="margin-top:16px" id="holdingsCard">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div><h2>My Bitcoin &amp; metals</h2><div class="sub" style="margin:0">Add each purchase. The page works out your average cost, the price where you start making a profit (after fees), and where to sell.</div></div>
+      <div style="display:flex;gap:6px"><button type="button" class="btn2" id="hExport">Download backup</button><label class="btn2" style="margin:0">Restore backup<input type="file" id="hImport" accept=".json,application/json" hidden></label></div>
+    </div>
+    <form class="hform" id="hForm" style="margin-top:12px">
+      <label>Asset<select class="inp" id="hAsset"><option value="BTC-USD">Bitcoin</option><option value="GC=F">Gold</option><option value="SI=F">Silver</option></select></label>
+      <label>Date bought<input class="inp" type="date" id="hDate"></label>
+      <label>Quantity<input class="inp mono" type="number" step="any" min="0" id="hQty" placeholder="e.g. 0.05" required></label>
+      <label>Unit<select class="inp" id="hUnit"></select></label>
+      <label>Price paid per unit<input class="inp mono" type="number" step="any" min="0" id="hPrice" placeholder="per unit" required></label>
+      <label>Currency<select class="inp" id="hCcy"><option>SAR</option><option>USD</option></select></label>
+      <label>Fees paid (total)<input class="inp mono" type="number" step="any" min="0" id="hFees" placeholder="0"></label>
+      <button class="btn" id="hAdd">Add</button>
+    </form>
+    <div class="hint" style="margin-top:6px">Your purchases are saved only in this browser on this device. Use "Download backup" to keep a copy or move them to another device.</div>
+    <div id="holdings"></div>
+  </section>
+  <section class="card" style="margin-top:16px">
+    <h2>Model track record (backtest on real prices)</h2>
+    <div class="sub" id="trackSub">How the model's past calls played out, so you can check whether its confidence scores hold up.</div>
+    <div id="track"><div class="empty">Calculating…</div></div>
+  </section>
+</main>
+
+<aside class="side">
+  <div class="card" style="padding:12px 16px"><h2>Bitcoin · Gold · Silver</h2><div class="sub" style="margin:0">Same analysis. Click for detail.</div></div>
+  <div id="alts" class="side"></div>
+  <div class="note"><b>About the data.</b> Free Yahoo Finance data: stock prices are typically <b>~15 minutes delayed</b>; Bitcoin is near real-time; gold and silver use COMEX futures (GC=F, SI=F). Data is refreshed automatically about every 10–20 minutes. SAR shown at the fixed peg of 3.75 per USD. To track more stocks, add their symbols to <b>watchlist.txt</b> in your GitHub repository.</div>
+  <div class="note">This tool supports your own research. Forecasts are probabilities based on past patterns, not guarantees, and this is not financial advice.</div>
+</aside>
+</div>
+
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+
+<script>
+const SAR=3.75;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const $=id=>document.getElementById(id);
+async function api(p){const r=await fetch(p,{cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("HTTP "+r.status));return j}
+const data=p=>api("data/"+p+"?t="+Date.now());
+const safe=k=>k.replace(/[^A-Za-z0-9]/g,"_");
+let TRACK={},STATUS=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- money: USD and SAR side by side everywhere ---------- */
+const fmt1=(x,c)=>{if(x==null||isNaN(x))return"—";const d=Math.abs(x)>=1000?0:Math.abs(x)>=100?1:2;return (x<0?"-":"")+(c==="SAR"?"":"$")+Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})+(c==="SAR"?" SAR":"")};
+const toUSD=(x,c)=>c==="SAR"?x/SAR:x, toSAR=(x,c)=>c==="SAR"?x:x*SAR;
+const fmt=(x,c)=>x==null?"—":`<span class="cur">${fmt1(toUSD(x,c),"USD")}</span><span class="cur2">${fmt1(toSAR(x,c),"SAR")}</span>`;
+const fmtT=(x,c)=>`${fmt1(toUSD(x,c),"USD")} / ${fmt1(toSAR(x,c),"SAR")}`;
+const pct=x=>x==null||isNaN(x)?"—":(x>=0?"+":"")+(x*100).toFixed(1)+"%";
+const p0=x=>x==null?"—":(x*100).toFixed(1)+"%";
+
+/* ---------- state ---------- */
+let A={};
+const FACT=[["tech","Technical"],["fund","Fundamental"],["val","Valuation"],["macro","Macro & news"],["risk","Risk (safety)"]];
+const S={mkt:"US",risk:"mid",hor:"mid",amount:50000,plan:"sys",w:{tech:20,fund:25,val:25,macro:15,risk:15},off:new Set()};
+const SYSW_BASE={tech:22,fund:24,val:20,macro:18,risk:16};
+function sysWeights(){const w={...SYSW_BASE};
+  if(S.hor==="short"){w.tech+=12;w.fund-=6;w.val-=6}
+  if(S.hor==="long"){w.tech-=10;w.fund+=6;w.val+=6;w.macro-=2}
+  return w}
+
+/* ---------- decision engine (same rules as the server backtest) ---------- */
+function analyse(a,w){
+  const tot=Object.values(w).reduce((s,x)=>s+x,0)||1;
+  let score=0;for(const k in w)score+=a.f[k]*w[k]/tot;
+  const vals=Object.values(a.f),mean=vals.reduce((s,x)=>s+x,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((s,x)=>s+(x-mean)**2,0)/vals.length);
+  const decision=score>=60?"BUY":score<=44?"SELL":"HOLD";
+  const dist=decision==="BUY"?score-60:decision==="SELL"?44-score:Math.min(score-44,60-score);
+  const conf=Math.round(clamp(48+dist*1.6+(25-sd)*0.9,30,94));
+  const dom=Object.keys(w).sort((x,y)=>a.f[y]*w[y]-a.f[x]*w[x])[0];
+  let days={tech:30,macro:60,fund:150,val:180,risk:120}[dom]*{short:.45,mid:1,long:2}[S.hor];
+  days=Math.round(clamp(days,10,400));
+  const p=a.last,v=a.vol||0.015,sw=v*Math.sqrt(5);
+  const expMove=v*Math.sqrt(days)*((score-50)/22);
+  const upside=a.fair?a.fair/p-1:0;
+  let entry,target,stop,t1;
+  if(decision==="BUY"){entry=p*(1-0.5*sw);target=p*(1+Math.max(expMove,upside*0.6,v*Math.sqrt(days)*0.6,0.03));stop=entry*(1-2.2*sw);t1=entry+(target-entry)*0.5}
+  else if(decision==="SELL"){entry=p*(1+0.4*sw);target=p*(1-Math.max(Math.abs(expMove),v*Math.sqrt(days)*0.5,0.03));stop=entry*(1+2*sw);t1=p+(target-p)*0.5}
+  else{entry=p*(1-1.5*sw);target=p*(1+Math.max(v*Math.sqrt(days)*0.4,0.03));stop=p*(1-3*sw);t1=target}
+  const exp=decision==="SELL"?(p-target)/p:(target-entry)/entry;
+  const rr=Math.abs(target-entry)/Math.abs(entry-stop);
+  return{score:Math.round(score),decision,conf,days,entry,target,stop,t1,exp,rr,dom,sd};
+}
+function holdTxt(d){return d<35?`${Math.round(d/7)}–${Math.round(d/7)+2} wks`:d<300?`${Math.round(d/30)}–${Math.round(d/30)+2} mo`:`${(d/365).toFixed(1)}+ yr`}
+
+function ranked(which){
+  const w=which==="sys"?sysWeights():S.w;
+  let list=Object.values(A).filter(a=>a.mkt===S.mkt&&a.f&&a.last);
+  if(which==="usr")list=list.filter(a=>!S.off.has(a.sector));
+  if(which==="usr"&&S.risk==="low")list=list.filter(a=>a.f.risk>=40);
+  const o={BUY:0,HOLD:1,SELL:2};
+  return list.map(a=>({a,x:analyse(a,w)})).sort((p,q)=>o[p.x.decision]-o[q.x.decision]||q.x.score*q.x.conf-p.x.score*p.x.conf).slice(0,10);
+}
+
+/* ---------- render ---------- */
+function rowHTML(i,{a,x}){return `<tr data-k="${esc(a.k)}">
+ <td class="dim mono">${i+1}</td>
+ <td><div class="sym">${esc(a.sym)}</div><div class="nm">${esc(a.name)}</div></td>
+ <td class="mono"><div data-px="${esc(a.k)}">${fmt(a.last,a.ccy)}</div><div class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(a.k)}">${pct(a.chg)}</div></td>
+ <td><span class="pill ${x.decision}">${x.decision}</span></td>
+ <td class="mono">${x.score}</td>
+ <td class="mono">${x.conf}%<span class="bar"><i style="width:${x.conf}%"></i></span></td>
+ <td class="mono">${fmt(x.entry,a.ccy)}</td>
+ <td class="mono ${x.decision==="SELL"?"down":"up"}">${fmt(x.target,a.ccy)}</td>
+ <td class="small muted">${holdTxt(x.days)}</td></tr>`}
+function renderTables(){
+  const sys=ranked("sys"),usr=ranked("usr");
+  $("sysBody").innerHTML=sys.length?sys.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Loading…</td></tr>`;
+  $("usrBody").innerHTML=usr.length?usr.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Nothing matches your filters.</td></tr>`;
+  const w=sysWeights();$("sysW").textContent="Model weights · "+FACT.map(([k,l])=>l.split(" ")[0]+" "+w[k]).join(" · ");
+  document.querySelectorAll("tbody tr[data-k]").forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
+}
+function renderWeights(){
+  $("weights").innerHTML=`<div style="grid-column:1/-1;font-size:12px;color:var(--muted);margin-bottom:-6px">Your factor weights (how much each type of analysis counts in <b style="color:var(--text)">Your picks</b>)</div>`+
+   FACT.map(([k,l])=>`<div class="w"><label>${l}<b id="wv-${k}">${S.w[k]}</b></label><input type="range" min="0" max="50" value="${S.w[k]}" data-w="${k}"></div>`).join("");
+  $("weights").querySelectorAll("input").forEach(el=>el.oninput=()=>{S.w[el.dataset.w]=+el.value;$("wv-"+el.dataset.w).textContent=el.value;renderAll()});
+}
+function renderSectors(){
+  const secs=[...new Set(Object.values(A).filter(a=>a.mkt===S.mkt).map(a=>a.sector))].sort();
+  $("sectors").innerHTML=`<span class="hint" style="margin-right:4px">Sectors in your picks (click to exclude):</span>`+secs.map(s=>`<button type="button" class="tog ${S.off.has(s)?"off":""}" data-s="${esc(s)}">${esc(s)}</button>`).join("");
+  $("sectors").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.off.has(b.dataset.s)?S.off.delete(b.dataset.s):S.off.add(b.dataset.s);renderSectors();renderAll()});
+}
+function renderPlan(){
+  $("amtLabel").innerHTML=fmt(S.amount,"USD");
+  const buys=ranked(S.plan).filter(r=>r.x.decision==="BUY");
+  const cfg={low:{max:.15,cash:.25,n:6},mid:{max:.22,cash:.12,n:6},high:{max:.30,cash:.05,n:5}}[S.risk];
+  if(!buys.length){$("plan").innerHTML=`<div class="note">No BUY calls right now with these settings, so the plan keeps 100% in cash. Try the other market or loosen your filters.</div>`;return}
+  const pick=buys.slice(0,cfg.n);
+  let wts=pick.map(r=>r.x.score*r.x.conf/100);const sum=wts.reduce((s,x)=>s+x,0);
+  wts=wts.map(x=>Math.min(x/sum*(1-cfg.cash),cfg.max));
+  const cash=1-wts.reduce((s,x)=>s+x,0);
+  let h=`<div class="plan-row h"><div>Asset</div><div>Weight</div><div>Amount</div><div>Entry → Target</div><div>Tranches</div></div>`;
+  pick.forEach((r,i)=>{const{a,x}=r;const usd=S.amount*wts[i];const sh=Math.floor(toSAR(usd,"USD")/toSAR(x.entry,a.ccy));
+    h+=`<div class="plan-row" style="cursor:pointer" data-k="${esc(a.k)}"><div><span class="sym">${esc(a.sym)}</span> <span class="muted small">${esc(a.name)}</span></div>
+     <div class="mono">${(wts[i]*100).toFixed(1)}%</div><div class="mono">${fmt(Math.round(usd),"USD")}<div class="hint">≈ ${sh.toLocaleString()} shares</div></div>
+     <div class="mono small">${fmt(x.entry,a.ccy)} → <span class="up">${fmt(x.target,a.ccy)}</span><div class="hint">stop ${fmt(x.stop,a.ccy)}</div></div>
+     <div class="small muted">3 buys · 2 sells<div class="hint">${holdTxt(x.days)}</div></div></div>`});
+  h+=`<div class="plan-row"><div><span class="sym">Cash reserve</span> <span class="muted small">for dips &amp; tranches 2–3</span></div><div class="mono">${(cash*100).toFixed(1)}%</div><div class="mono">${fmt(Math.round(S.amount*cash),"USD")}</div><div></div><div></div></div>`;
+  const expRet=pick.reduce((s,r,i)=>s+wts[i]*r.x.exp*(r.x.conf/100),0);
+  h+=`<div class="note">Risk setting <b>${{low:"Low",mid:"Medium",high:"High"}[S.risk]}</b>: max <b>${cfg.max*100}%</b> in one asset, at least <b>${cfg.cash*100}%</b> kept in cash. Confidence-weighted expected return on the full amount: <b class="${expRet>=0?"up":"down"}">${pct(expRet)}</b> over the holding periods shown. Click a row for its staged buy/sell plan.</div>`;
+  $("plan").innerHTML=h;
+  $("plan").querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openDetail(el.dataset.k));
+}
+function renderAlts(){
+  const w=sysWeights();const alts=Object.values(A).filter(a=>a.mkt==="ALT"&&a.f&&a.last);
+  $("alts").innerHTML=alts.length?alts.map(a=>{const x=analyse(a,w);return `<div class="card alt" data-k="${esc(a.k)}">
+   <div class="top"><div><div class="sym">${esc(a.name)}</div><div class="hint">${esc(a.sym)}/USD</div></div><span class="pill ${x.decision}">${x.decision}</span></div>
+   <div class="px mono" data-px="${esc(a.k)}">${fmt(a.last,"USD")}</div><div class="small mono ${a.chg>=0?"up":"down"}" data-ch="${esc(a.k)}">${pct(a.chg)}</div>
+   <div class="kv"><div><span>Entry</span><b>${fmt(x.entry,"USD")}</b></div><div><span>Target</span><b class="${x.decision==="SELL"?"down":"up"}">${fmt(x.target,"USD")}</b></div>
+   <div><span>Confidence</span><b>${x.conf}%</b></div><div><span>Hold</span><b>${holdTxt(x.days)}</b></div></div></div>`}).join(""):`<div class="card empty">Loading…</div>`;
+  $("alts").querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openDetail(el.dataset.k));
+}
+async function renderTrack(){
+  try{
+    const t=TRACK[S.mkt]||{};
+    if(!t.calls){$("track").innerHTML=`<div class="empty">Calculating…</div>`;return}
+    $("trackSub").textContent=`Every week of the last ~1.5 years, the model's call on each ${S.mkt==="US"?"US":"Saudi"} stock was replayed and followed for ${t.days} trading days (~3 months) on real prices.`;
+    $("track").innerHTML=`<div class="cols" style="grid-template-columns:1fr 1fr"><table class="tbl-s"><thead><tr><th>Call</th><th></th><th>Signals</th><th>Worked</th><th>Avg result</th></tr></thead><tbody>${t.calls.map(x=>`<tr style="cursor:default"><td><span class="pill ${x.d}">${x.d}</span></td><td></td><td class="mono">${x.n}</td><td class="mono">${x.hit==null?"—":(x.hit*100).toFixed(0)+"%"}</td><td class="mono ${x.avg>=0?"up":"down"}">${pct(x.avg)}</td></tr>`).join("")}</tbody></table>
+    <table class="tbl-s"><thead><tr><th>Confidence band</th><th></th><th>Signals</th><th>Worked</th></tr></thead><tbody>${t.bands.map(x=>`<tr style="cursor:default"><td>${x.b}</td><td></td><td class="mono">${x.n}</td><td class="mono">${x.hit==null?"—":(x.hit*100).toFixed(0)+"%"}<span class="bar" style="width:80px"><i style="width:${(x.hit||0)*100}%"></i></span></td></tr>`).join("")}</tbody></table></div>
+    <div class="note">"Worked" = a BUY that reached its target before its stop (or ended up higher); a SELL where the price fell; a HOLD that never broke its review level. Avg result = average price move after the call. Past calls are rebuilt from price-based factors only (technical, valuation vs 200-day average, market conditions, risk), because free sources don't keep historical company financials. If higher-confidence bands don't show higher "Worked" rates, trust the confidence score less.</div>`;
+  }catch(e){$("track").innerHTML=`<div class="empty">Not available yet.</div>`}
+}
+function renderAll(){renderTables();renderPlan();renderAlts();renderHoldings()}
+
+
+/* ---------- my holdings (Bitcoin, gold, silver) ---------- */
+const OZ_G=31.1034768, HKEY="advisor-holdings-v1";
+const HN={"BTC-USD":"Bitcoin","GC=F":"Gold","SI=F":"Silver"};
+let H=(()=>{try{const h=JSON.parse(localStorage.getItem(HKEY));if(h&&Array.isArray(h.lots))return{lots:h.lots,fee:h.fee||{},goal:h.goal||{}}}catch(e){}return{lots:[],fee:{},goal:{}}})();
+function saveH(){try{localStorage.setItem(HKEY,JSON.stringify(H))}catch(e){}}
+function unitsFor(k){return k==="BTC-USD"?[["BTC","BTC"]]:[["g","grams"],["oz","troy ounces"]]}
+function setUnits(){const k=$("hAsset").value;$("hUnit").innerHTML=unitsFor(k).map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+  $("hQty").placeholder=k==="BTC-USD"?"e.g. 0.05":"e.g. 50"}
+$("hAsset").onchange=setUnits;setUnits();
+$("hDate").value=new Date().toISOString().slice(0,10);
+// convert a lot to market units: quantity in BTC / troy oz, cost in USD
+function lotNorm(l){const q=l.unit==="g"?l.qty/OZ_G:l.qty;const toU=x=>l.ccy==="SAR"?x/SAR:x;
+  return{q,cost:toU(l.qty*l.price)+toU(l.fees||0),unitPx:toU(l.price)*(l.unit==="g"?OZ_G:1)}}
+function pxBoth(x,k){ // price per BTC, or per oz + per gram for metals
+  return k==="BTC-USD"?fmt(x,"USD"):`${fmt(x,"USD")} <em class="hint" style="font-style:normal">/oz</em><div class="hint" style="font-weight:400;text-transform:none">${fmt1(x/OZ_G,"USD")} · ${fmt1(x*SAR/OZ_G,"SAR")} per gram</div>`}
+function qtyTxt(q,k){return k==="BTC-USD"?`${(+q.toFixed(8))} BTC`:`${q.toFixed(3)} oz (${(q*OZ_G).toFixed(1)} g)`}
+$("hForm").onsubmit=e=>{e.preventDefault();
+  const l={id:Date.now()+""+Math.random().toString(36).slice(2,6),asset:$("hAsset").value,date:$("hDate").value,qty:+$("hQty").value,unit:$("hUnit").value,price:+$("hPrice").value,ccy:$("hCcy").value,fees:+$("hFees").value||0};
+  if(!(l.qty>0)||!(l.price>0))return;
+  H.lots.push(l);H.lots.sort((a,b)=>a.date<b.date?-1:1);saveH();$("hQty").value="";$("hPrice").value="";$("hFees").value="";renderHoldings()};
+$("hExport").onclick=()=>{const b=new Blob([JSON.stringify(H,null,1)],{type:"application/json"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);a.download="my-holdings-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+$("hImport").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const h=JSON.parse(await f.text());if(!Array.isArray(h.lots))throw 0;H={lots:h.lots,fee:h.fee||{},goal:h.goal||{}};saveH();renderHoldings()}catch(_){alert("That file isn't a holdings backup.")}e.target.value=""};
+function renderHoldings(){
+  const box=$("holdings");if(!box)return;
+  const assets=[...new Set(H.lots.map(l=>l.asset))];
+  if(!assets.length){box.innerHTML=`<div class="empty">No purchases yet. Add your first one above. For gold or silver bought in grams, choose "grams"; prices can be in SAR or USD.</div>`;return}
+  box.innerHTML=assets.map(k=>{
+    const lots=H.lots.filter(l=>l.asset===k),a=A[k],N=lots.map(lotNorm);
+    const Q=N.reduce((s,n)=>s+n.q,0),C=N.reduce((s,n)=>s+n.cost,0),avg=C/Q;
+    const fee=+(H.fee[k]??0)/100,goal=+(H.goal[k]??10)/100;
+    const be=avg/(1-fee), goalPx=C*(1+goal)/(Q*(1-fee));
+    if(!a||!a.last||!a.f)return `<div class="hsum"><h3>${HN[k]}</h3><div class="empty">Waiting for market data…</div></div>`;
+    const last=a.last,val=Q*last*(1-fee),pl=val-C,plp=pl/C,x=analyse(a,sysWeights());
+    const need=be/last-1;
+    let v,cls;
+    if(last>=be){cls="good";v=`<b>You are in profit.</b> The price is ${pct(last/be-1)} above your break-even of ${fmt(be,"USD")}. Selling everything now would bring about ${fmt(val,"USD")} after the selling fee, a profit of <b class="up">${fmt(pl,"USD")}</b> (${pct(plp)}).`}
+    else{cls="bad";v=`<b>Not in profit yet.</b> ${HN[k]} must rise <b>${pct(need)}</b> to ${fmt(be,"USD")} before you start making a profit. Selling now would lose about <b class="down">${fmt(-pl,"USD")}</b> (${pct(plp)}).`}
+    // advice combining break-even and the model call
+    const t1=Math.max(x.t1,be*1.02),t2=Math.max(x.target,goalPx);
+    let adv;
+    if(x.decision==="SELL"&&last>=be)adv=`The model rates ${HN[k]} <span class="pill SELL">SELL</span> and you are in profit, so consider selling part now (for example half) to lock in gains, and the rest if it bounces toward ${fmt(x.entry,"USD")}.`;
+    else if(x.decision==="SELL")adv=`The model rates ${HN[k]} <span class="pill SELL">SELL</span> (it expects weakness toward ${fmt(x.target,"USD")}). Selling now would lock in a loss. Decide how much further fall you accept: the model's review level is ${fmt(x.stop,"USD")}.`;
+    else adv=`The model rates ${HN[k]} <span class="pill ${x.decision}">${x.decision}</span> with ${x.conf}% confidence${x.decision==="BUY"?` and sees upside toward ${fmt(x.target,"USD")} over ${holdTxt(x.days)}`:""}. Suggested exits: sell <b>half at ${fmt(t1,"USD")}</b> and <b>the rest at ${fmt(t2,"USD")}</b>${t2>=x.target*1.001?" (your profit goal)":" (the model's target)"}.`;
+    const rows=[["Start of profit (break-even)",be,"Below this you lose money after fees"],[`Your profit goal (+${(goal*100).toFixed(0)}%)`,goalPx,"Change the goal below"],
+      ...(Math.abs(x.t1-x.target)>x.target*0.001?[["Model first target",x.t1,x.t1<be?"Below your break-even, so selling here locks a loss":"Sell part here"]]:[]),["Model target",x.target,x.target<be?"Below your break-even, so selling here locks a loss":"Sell here or above"],
+      [x.decision==="SELL"?"Model review level":"Model stop / review",x.stop,"If the price falls here, reconsider holding"]];
+    return `<div class="hsum" data-k="${k}">
+     <h3>${HN[k]} <span class="pill ${x.decision}">${x.decision}</span><span class="hint" style="font-weight:400">market price ${fmt(last,"USD")}${k!=="BTC-USD"?" per oz":""} · ${pct(a.chg)} today</span></h3>
+     <div class="hgrid">
+      <div class="stat"><span>You hold</span><b style="font-size:14px">${qtyTxt(Q,k)}</b><small>${lots.length} purchase${lots.length>1?"s":""}</small></div>
+      <div class="stat"><span>Total paid</span><b>${fmt(C,"USD")}</b><small>incl. fees</small></div>
+      <div class="stat"><span>Average cost</span><b>${pxBoth(avg,k)}</b></div>
+      <div class="stat"><span>Break-even sell price</span><b class="${last>=be?"up":"down"}">${pxBoth(be,k)}</b><small>after ${(fee*100).toFixed(1)}% selling fee</small></div>
+      <div class="stat"><span>Value now</span><b>${fmt(val,"USD")}</b><small>after selling fee</small></div>
+      <div class="stat"><span>Profit / loss</span><b class="${pl>=0?"up":"down"}">${fmt(pl,"USD")}</b><small>${pct(plp)}</small></div>
+     </div>
+     <div class="verdict ${cls}">${v}</div>
+     <div class="verdict mid">${adv}</div>
+     <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:6px">
+      <div><table class="tbl-s"><thead><tr><th>Sell level</th><th></th><th>Price</th><th style="text-align:left;padding-left:10px">Note</th></tr></thead><tbody>
+       ${rows.map(([n,p,t])=>`<tr style="cursor:default"><td>${n}</td><td></td><td class="mono ${p>=be?"up":"down"}">${pxBoth(p,k)}</td><td class="small muted" style="text-align:left;padding-left:10px;white-space:normal">${t}</td></tr>`).join("")}
+      </tbody></table>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap" class="small muted">
+       <label>Selling fee / dealer spread % <input class="inp mono mini" type="number" step="0.1" min="0" max="20" value="${(fee*100)}" data-fee="${k}"></label>
+       <label>Profit goal % <input class="inp mono mini" type="number" step="1" min="0" max="500" value="${(goal*100).toFixed(0)}" data-goal="${k}"></label></div>
+       <div class="hint" style="margin-top:4px">Gold and silver dealers usually buy back below the market price; enter that gap as the selling fee so the break-even is realistic.</div></div>
+      <div><table class="tbl-s lots"><thead><tr><th>Date</th><th>Bought</th><th>Price paid</th><th>Now</th><th></th></tr></thead><tbody>
+       ${lots.map((l,i)=>{const n=N[i],r=last*(1-fee)/n.unitPx-1;return `<tr style="cursor:default"><td class="mono">${esc(l.date||"")}</td><td class="mono">${l.qty} ${l.unit==="g"?"g":l.unit==="oz"?"oz":"BTC"}</td><td class="mono">${fmt1(l.price,l.ccy)}${l.unit==="g"?"/g":l.unit==="oz"?"/oz":""}</td><td class="mono ${r>=0?"up":"down"}">${pct(r)}</td><td><button type="button" class="xbtn" data-del="${esc(l.id)}" title="Delete">✕</button></td></tr>`}).join("")}
+      </tbody></table></div></div></div>`}).join("");
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{H.lots=H.lots.filter(l=>l.id!==b.dataset.del);saveH();renderHoldings()});
+  box.querySelectorAll("[data-fee]").forEach(i=>i.onchange=()=>{H.fee[i.dataset.fee]=Math.max(0,Math.min(20,+i.value||0));saveH();renderHoldings()});
+  box.querySelectorAll("[data-goal]").forEach(i=>i.onchange=()=>{H.goal[i.dataset.goal]=Math.max(0,+i.value||0);saveH();renderHoldings()});
+}
+
+/* ---------- detail ---------- */
+let chart=null,openKey=null;
+function factorDetail(a,k){
+  const m=a.m||{},p=a.last,c=a.ccy;
+  if(k==="tech")return `RSI ${m.rsi??"—"} · price ${p>m.sma50?"above":"below"} 50-day avg (${fmt(m.sma50,c)}) · ${p>m.sma200?"above":"below"} 200-day avg · ${pct(m.hi52?p/m.hi52-1:null)} from 52-wk high · 3-month change ${pct(m.mom3m)}`;
+  if(k==="fund"){
+    if(a.mkt==="ALT")return `1-year price trend (no company financials for ${esc(a.name)})`;
+    if(!a.fundOk)return `Company financials not loaded yet, so a neutral 50 is used`;
+    const b=[];if(m.revG!=null)b.push(`Revenue growth ${pct(m.revG)}`);if(m.epsG!=null)b.push(`Earnings growth ${pct(m.epsG)}`);if(m.roe!=null)b.push(`ROE ${p0(m.roe)}`);
+    if(m.margin!=null)b.push(`Profit margin ${p0(m.margin)}`);if(m.de!=null)b.push(`Debt/Equity ${m.de}`);if(m.div!=null)b.push(`Dividend ${p0(m.div)}`);return b.join(" · ")}
+  if(k==="val"){
+    if(a.mkt==="ALT")return `Price vs its 200-day average (fair value ≈ ${fmt(a.fair,c)}, ${pct(a.fair/p-1)})`;
+    const b=[];if(m.pe)b.push(`P/E ${m.pe}${m.sectorPE?` vs sector median ${m.sectorPE}`:""}`);
+    if(m.target)b.push(`Analyst target ${fmt(m.target,c)} (${pct(m.target/p-1)}${m.analysts?`, ${m.analysts} analysts`:""}${m.rec?`, consensus "${String(m.rec).replace("_"," ")}"`:""})`);
+    b.push(`Model fair value ${fmt(a.fair,c)} (${pct(a.fair/p-1)})`);return b.join(" · ")}
+  if(k==="macro")return `${esc(m.macroTxt||"Market conditions")}${m.newsN?` · news tone ${m.newsSent>0.1?"positive":m.newsSent<-0.1?"negative":"neutral"} (${m.newsN} headlines)`:""}`;
+  return `Annual volatility ${p0(m.annVol)} · ${pct(m.dd)} from 1-yr high${m.beta?` · beta ${m.beta}`:""}`;
+}
+function justification(a,x){
+  const fs=FACT.map(([k,l])=>({k,l,v:a.f[k]})).sort((p,q)=>q.v-p.v);
+  const strong=fs.filter(f=>f.v>=60),weak=fs.filter(f=>f.v<45);
+  const lead={BUY:`The model rates ${esc(a.name)} a <b class="up">BUY</b> with a composite score of ${x.score}/100.`,SELL:`The model rates ${esc(a.name)} a <b class="down">SELL</b> with a composite score of ${x.score}/100.`,HOLD:`The model rates ${esc(a.name)} a <b style="color:var(--hold)">HOLD</b> (score ${x.score}/100): the evidence is mixed.`}[x.decision];
+  const why={tech:"price trend and momentum are favourable",fund:a.mkt==="ALT"?"the 1-year trend is strong":"the business is growing profitably with a manageable balance sheet",val:a.mkt==="ALT"?"the price is not stretched above its long-term average":"the price is below the model's fair-value estimate",macro:"market conditions and recent news are supportive",risk:"volatility and drawdown risk are relatively low"};
+  const whyNot={tech:"the price trend is weak",fund:a.mkt==="ALT"?"the 1-year trend is weak":"growth and profitability are soft",val:a.mkt==="ALT"?"the price is stretched above its long-term average":"the stock looks expensive against its fair value",macro:"market conditions or news are a headwind",risk:"price swings are large, so keep the position smaller"};
+  const ps=[lead];
+  if(strong.length)ps.push(`<b>Supporting:</b> ${strong.slice(0,3).map(f=>`${f.l} (${f.v.toFixed(0)}): ${why[f.k]}`).join("; ")}.`);
+  if(weak.length)ps.push(`<b>Against:</b> ${weak.slice(0,2).map(f=>`${f.l} (${f.v.toFixed(0)}): ${whyNot[f.k]}`).join("; ")}.`);
+  ps.push(`<b>Confidence ${x.conf}%</b> reflects how far the score is from the decision threshold and how much the five factors agree (spread ${x.sd.toFixed(0)} pts). ${x.conf>=70?"The factors broadly agree.":"The factors disagree, so treat this call with caution."}`);
+  ps.push(x.decision==="BUY"?`<b>Plan:</b> buy in three steps starting near ${fmt(x.entry,a.ccy)} rather than all at once, take half the profit at ${fmt(x.t1,a.ccy)} and the rest at ${fmt(x.target,a.ccy)}, and exit if it closes below ${fmt(x.stop,a.ccy)}. Reward-to-risk ≈ ${x.rr.toFixed(1)}×.`
+   :x.decision==="SELL"?`<b>Plan:</b> if you hold it, sell half now and the rest on any bounce toward ${fmt(x.entry,a.ccy)}; the model sees downside toward ${fmt(x.target,a.ccy)}. Re-check if it closes above ${fmt(x.stop,a.ccy)}.`
+   :`<b>Plan:</b> keep existing shares; add on dips toward ${fmt(x.entry,a.ccy)}, trim some above ${fmt(x.target,a.ccy)}, and review if it breaks ${fmt(x.stop,a.ccy)}.`);
+  return ps.map(p=>`<p>${p}</p>`).join("");
+}
+function iterations(a,x){
+  const sw=(a.vol||0.015)*Math.sqrt(5);
+  if(x.decision==="BUY")return[["Buy 1","40%",x.entry,"At or below entry"],["Buy 2","35%",x.entry*(1-1.1*sw),"On a pull-back"],["Buy 3","25%",x.entry*(1-1.8*sw),"Deeper dip, above stop"],["Sell 1","50%",x.t1,"Take first profit, move stop to entry"],["Sell 2","50%",x.target,"Final target (or trailing stop)"]];
+  if(x.decision==="SELL")return[["Sell 1","50%",a.last,"Now"],["Sell 2","50%",x.entry,"On a bounce"],["Re-buy watch","—",x.target,"Re-evaluate near downside target"]];
+  return[["Add","25%",x.entry,"Only on a dip"],["Trim","25%",x.target,"Lock in some gains"],["Review","—",x.stop,"Thesis breaks below here"]];
+}
+/* ---------- similar past signals (same rules as the Python backtest) ---------- */
+function decide4(t,v,m,r){const sc=(t*22+v*20+m*18+r*16)/76,mu=(t+v+m+r)/4,sd=Math.sqrt(((t-mu)**2+(v-mu)**2+(m-mu)**2+(r-mu)**2)/4);
+  return{sc,dec:sc>=60?"BUY":sc<=44?"SELL":"HOLD"}}
+function evaluate(c,dv,i,dec,td){
+  const n=Math.min(td,c.length-1-i);if(n<5)return null;
+  const p=c[i],v=dv[i]??0.015,sw=v*Math.sqrt(5),path=c.slice(i+1,i+1+n);
+  if(dec==="BUY"){const tg=p*(1+Math.max(0.6*v*Math.sqrt(td),0.03)),sp=p*(1-2.2*sw);
+    for(let j=0;j<path.length;j++){if(path[j]>=tg)return[true,tg/p-1,j+1];if(path[j]<=sp)return[false,sp/p-1,j+1]}
+    const r=path[path.length-1]/p-1;return[r>0,r,n]}
+  if(dec==="SELL"){const tg=p*(1-Math.max(0.5*v*Math.sqrt(td),0.03)),sp=p*(1+2*sw);
+    for(let j=0;j<path.length;j++){if(path[j]<=tg)return[true,tg/p-1,j+1];if(path[j]>=sp)return[false,sp/p-1,j+1]}
+    const r=path[path.length-1]/p-1;return[r<0,r,n]}
+  const sp=p*(1-3*sw),r=path[path.length-1]/p-1;return[Math.min(...path)>sp,r,n]}
+function similar(D,dec,score,days){
+  const c=D.c,td=Math.max(5,Math.round(days*5/7)),out=[];let lastI=null;
+  for(let i=c.length-6;i>60;i--){
+    if(c[i]==null||D.tech[i]==null)continue;
+    const h=decide4(D.tech[i],D.val[i],D.macro[i],D.risk[i]);
+    if(h.dec!==dec||Math.abs(h.sc-score)>10)continue;
+    if(lastI!==null&&lastI-i<15)continue;
+    const r=evaluate(c,D.dvol,i,dec,td);if(!r)continue;lastI=i;
+    out.push({date:D.dates[i],px:c[i],score:Math.round(h.sc),worked:r[0],ret:r[1],held:Math.round(r[2]*7/5)});
+    if(out.length>=10)break}
+  return out}
+async function openDetail(k){
+  const a=A[k];if(!a||!a.f)return;openKey=k;
+  const own=S.plan==="usr"&&a.mkt!=="ALT";const w=own?S.w:sysWeights();
+  const x=analyse(a,w),it=iterations(a,x);
+  const colors={tech:"#2563eb",fund:"#16a34a",val:"#7c3aed",macro:"#d97706",risk:"#0891b2"};
+  $("modal").innerHTML=`<div class="mh">
+   <div><div class="hint">${a.mkt==="SA"?"Tadawul":a.mkt==="US"?"US":"Global"} · ${esc(a.sector)}</div><h3>${esc(a.name)} <span class="muted mono" style="font-size:15px">${esc(a.sym)}</span></h3>
+   <div class="mono" style="font-size:22px;margin-top:4px"><span data-px="${esc(k)}">${fmt(a.last,a.ccy)}</span> <span class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(k)}">${pct(a.chg)}</span></div></div>
+   <div style="display:flex;gap:16px;align-items:center;margin-left:24px"><span class="pill bigpill ${x.decision}">${x.decision}</span>
+   <div class="conf"><div class="ring" style="--p:${x.conf}"><b>${x.conf}%</b></div><div class="small muted">Confidence<br><span class="hint">Score ${x.score}/100 · ${own?"your":"system"} weights</span></div></div></div>
+   <button class="close" onclick="closeDetail()">Close ✕</button></div>
+  <div class="stats">
+   <div class="stat"><span>${x.decision==="SELL"?"Exit at / above":"Entry price"}</span><b>${fmt(x.entry,a.ccy)}</b><small>${pct(x.entry/a.last-1)} vs now</small></div>
+   <div class="stat"><span>${x.decision==="SELL"?"Downside target":"Target"}</span><b class="${x.decision==="SELL"?"down":"up"}">${fmt(x.target,a.ccy)}</b><small>${x.decision==="BUY"?"1st: "+fmt(x.t1,a.ccy):"&nbsp;"}</small></div>
+   <div class="stat"><span>${x.decision==="SELL"?"Invalidation":"Stop-loss"}</span><b class="down">${fmt(x.stop,a.ccy)}</b><small>${pct(x.stop/x.entry-1)} from entry</small></div>
+   <div class="stat"><span>Holding period</span><b>${holdTxt(x.days)}</b><small>review ${new Date(Date.now()+x.days*864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</small></div>
+   <div class="stat"><span>Expected move</span><b class="${x.decision==="SELL"?"down":"up"}">${x.decision==="SELL"?"−":"+"}${(Math.abs(x.exp)*100).toFixed(1)}%</b><small>if target is hit</small></div>
+   <div class="stat"><span>Reward : risk</span><b>${x.rr.toFixed(1)}×</b><small>${x.rr>=2?"favourable":x.rr>=1.3?"acceptable":"thin"}</small></div>
+  </div>
+  <div class="cols"><div>
+    <div style="height:290px"><canvas id="cv"></canvas></div>
+    <div class="hint" style="margin-top:4px">12 months of real prices, 50-day average, and the forecast range (shaded, ~80% band) over the holding period. Dashed: entry, target, stop.</div>
+    <div class="sec"><h4>Why this call</h4><div class="just">${justification(a,x)}</div></div>
+    <div class="sec news"><h4>Latest news</h4><div id="newsBox" class="empty">Loading headlines…</div></div>
+  </div><div>
+    <div class="sec" style="margin-top:0"><h4>Factor breakdown</h4>${FACT.map(([fk,l])=>`<div class="fac"><div>${l}</div><div class="tr"><i style="width:${a.f[fk]}%;background:${colors[fk]}"></i></div><div class="mono" style="text-align:right">${a.f[fk].toFixed(0)}</div><div class="det">${factorDetail(a,fk)}</div></div>`).join("")}</div>
+    <div class="sec"><h4>Staged buy / sell plan</h4><table class="tbl-s"><thead><tr><th>Step</th><th>Size</th><th>Price</th><th style="text-align:left;padding-left:12px">When</th></tr></thead><tbody>${it.map(s=>`<tr style="cursor:default"><td>${s[0]}</td><td class="mono" style="text-align:left">${s[1]}</td><td class="mono">${fmt(s[2],a.ccy)}</td><td class="small muted" style="text-align:left;padding-left:12px;white-space:normal">${s[3]}</td></tr>`).join("")}</tbody></table></div>
+  </div></div>
+  <div class="sec"><h4>Similar past signals on ${esc(a.sym)}</h4><div id="simBox" class="empty">Searching 2 years of history…</div></div>
+  <div class="disc">Forecasts are probabilities based on past patterns, not guarantees; prices can gap past stop-loss levels. Prices come from Yahoo Finance (typically ~15 minutes delayed) and this site refreshes about every 10–20 minutes. This tool supports your own research and is not financial advice.</div>`;
+  $("scrim").classList.add("open");
+  try{
+    const D=await data("detail/"+safe(k)+".json");
+    if(openKey!==k)return;
+    const L=260,d={dates:D.dates.slice(-L),close:D.c.slice(-L),sma50:D.sma50.slice(-L),news:D.news||[],similar:similar(D,x.decision,x.score,x.days)};
+    drawChart(a,x,d);
+    $("newsBox").className="";
+    $("newsBox").innerHTML=d.news.length?`<ul>${d.news.slice(0,6).map(n=>`<li><span class="sent ${n.sent>0.1?"p":n.sent<-0.1?"n":"z"}">${n.sent>0.1?"POS":n.sent<-0.1?"NEG":"NEU"}</span><span>${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)} <span class="hint">${esc(n.publisher||"")}${n.time?" · "+new Date(n.time).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""}</span></span></li>`).join("")}</ul>`:`<div class="empty">No recent headlines found.</div>`;
+    const sim=d.similar||[];
+    if(!sim.length){$("simBox").innerHTML=`No past ${x.decision} calls with a similar score in the last 2 years.`;return}
+    const hits=sim.filter(s=>s.worked).length,avg=sim.reduce((s,y)=>s+y.ret,0)/sim.length;
+    $("simBox").className="";
+    $("simBox").innerHTML=`<div class="small muted" style="margin-bottom:6px">Past dates when the model's price-based factors gave the same call with a similar score, followed on real prices. <b style="color:var(--text)">${hits} of ${sim.length}</b> worked · average result <b class="${avg>=0?"up":"down"}">${pct(avg)}</b>.</div>
+     <table class="tbl-s"><thead><tr><th>Date</th><th>Call</th><th>Score</th><th>Price then</th><th>Held</th><th>Result</th><th>Outcome</th></tr></thead><tbody>${sim.map(s=>`<tr style="cursor:default"><td class="mono">${new Date(s.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</td><td style="text-align:left"><span class="pill ${x.decision}">${x.decision}</span></td><td class="mono">${s.score}</td><td class="mono">${fmt(s.px,a.ccy)}</td><td class="mono">${s.held}d</td><td class="mono ${s.ret>=0?"up":"down"}">${pct(s.ret)}</td><td>${s.worked?'<span class="up">✓ worked</span>':'<span class="down">✗ missed</span>'}</td></tr>`).join("")}</tbody></table>`;
+  }catch(e){if($("simBox"))$("simBox").textContent="Could not load history: "+e.message}
+}
+function closeDetail(){$("scrim").classList.remove("open");openKey=null;if(chart){chart.destroy();chart=null}}
+$("scrim").onclick=e=>{if(e.target===$("scrim"))closeDetail()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
+function drawChart(a,x,d){
+  if(typeof Chart==="undefined"){$("cv").parentElement.innerHTML='<div class="note">Chart library could not load.</div>';return}
+  const h=d.close,n=h.length,F=Math.min(x.days,120),last=a.last||h[n-1];
+  const labels=d.dates.map(s=>new Date(s).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"}));
+  for(let i=1;i<=F;i++){labels.push(new Date(Date.now()+i*864e5*7/5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"}))}
+  const dirn=x.decision==="HOLD"?0:x.target/last-1;
+  const mid=[],upB=[],loB=[];const v=a.vol||0.015;
+  for(let i=0;i<n+F;i++){if(i<n-1){mid.push(null);upB.push(null);loB.push(null);continue}
+    const t=i-(n-1),m=last*(1+dirn*Math.min(t/F,1)),s=v*Math.sqrt(t)*last;mid.push(m);upB.push(m+1.28*s);loB.push(m-1.28*s)}
+  const line=val=>Array(n+F).fill(val),pad=Array(F).fill(null);
+  if(chart)chart.destroy();
+  chart=new Chart($("cv"),{type:"line",data:{labels,datasets:[
+    {label:"Price",data:[...h,...pad],borderColor:"#14202e",borderWidth:1.6,pointRadius:0,tension:.15},
+    {label:"50-day avg",data:[...d.sma50,...pad],borderColor:"#2563eb",borderWidth:1.2,pointRadius:0},
+    {label:"Forecast high",data:upB,borderColor:"rgba(0,0,0,0)",backgroundColor:"rgba(124,58,237,.10)",pointRadius:0,fill:"+1"},
+    {label:"Forecast low",data:loB,borderColor:"rgba(0,0,0,0)",pointRadius:0,fill:false},
+    {label:"Forecast",data:mid,borderColor:"#7c3aed",borderDash:[4,3],borderWidth:1.4,pointRadius:0},
+    {label:"Entry",data:line(x.entry),borderColor:"rgba(20,32,46,.5)",borderDash:[6,4],borderWidth:1,pointRadius:0},
+    {label:"Target",data:line(x.target),borderColor:x.decision==="SELL"?"#dc2626":"#16a34a",borderDash:[6,4],borderWidth:1,pointRadius:0},
+    {label:"Stop",data:line(x.stop),borderColor:"#dc2626",borderDash:[2,3],borderWidth:1,pointRadius:0}]},
+   options:{maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:"#5b6878",boxWidth:12,font:{size:11},filter:i=>!["Forecast high","Forecast low"].includes(i.text)}},
+     tooltip:{callbacks:{label:c=>c.raw==null?null:`${c.dataset.label}: ${fmtT(c.raw,a.ccy)}`}}},
+    scales:{x:{ticks:{color:"#8794a5",maxTicksLimit:8,font:{size:10}},grid:{color:"#eef1f5"}},
+     y:{ticks:{color:"#8794a5",font:{size:10},callback:val=>fmtT(val,a.ccy)},grid:{color:"#eef1f5"}}}}});
+}
+
+/* ---------- updates: the site is rebuilt every ~10–20 min; check for new data every minute ---------- */
+function marketsOpen(){
+  const now=new Date(),ny=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})),ri=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Riyadh"}));
+  const nm=ny.getHours()*60+ny.getMinutes(),rm=ri.getHours()*60+ri.getMinutes();
+  return{us:ny.getDay()>=1&&ny.getDay()<=5&&nm>=570&&nm<960,sa:ri.getDay()<=4&&rm>=600&&rm<900}}
+function marketChips(){const o=marketsOpen();
+  $("mktUS").innerHTML=`<span class="dot ${o.us?"live":""}"></span>US ${o.us?"open":"closed"}`;
+  $("mktSA").innerHTML=`<span class="dot ${o.sa?"live":""}"></span>Tadawul ${o.sa?"open":"closed"}`}
+function freshness(){
+  if(!STATUS){$("feedLabel").textContent="Yahoo Finance";return}
+  const ago=Math.max(0,Math.round(Date.now()/1000-STATUS.builtAt));
+  $("feedLabel").textContent=`Yahoo Finance · updated ${ago<90?"just now":ago<5400?Math.round(ago/60)+" min ago":Math.round(ago/3600)+" h ago"} · auto-refreshes`;
+  $("liveDot").className="dot"+(ago<1800?" live":"");
+  if(STATUS.withFinancials<STATUS.assets){$("finChip").style.display="";$("finChip").textContent=`Financials loaded for ${STATUS.withFinancials}/${STATUS.assets}`}else $("finChip").style.display="none";
+}
+async function loadUniverse(){
+  const list=await data("universe.json"),prev={};for(const k in A)prev[k]=A[k].last;
+  A={};for(const a of list)A[a.k]=a;
+  renderSectors();renderAll();
+  for(const a of list){const p=prev[a.k];if(p==null||p===a.last)continue;
+    document.querySelectorAll(`[data-px="${CSS.escape(a.k)}"]`).forEach(el=>el.classList.add(a.last>p?"flash-up":"flash-down"))}
+}
+async function refresh(){
+  try{const s=await data("status.json");
+    if(!STATUS||s.builtAt!==STATUS.builtAt){STATUS=s;TRACK=await data("track.json").catch(()=>({}));await loadUniverse();renderTrack()}
+    STATUS=s}catch(e){}
+  freshness()}
+function clockTick(){$("clock").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Asia/Riyadh"})+" Riyadh";freshness();marketChips()}
+
+/* ---------- wiring ---------- */
+function seg(id,key,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.onclick=()=>{el.querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");S[key]=b.dataset.v;cb&&cb();renderAll()})}
+seg("mktSeg","mkt",()=>{S.off.clear();renderSectors();renderTrack()});
+seg("riskSeg","risk");seg("horSeg","hor");seg("planSeg","plan");
+const setAmt=()=>{S.amount=Math.max(0,+$("amount").value||0);$("amtSar").textContent="= "+fmt1(S.amount*SAR,"SAR")};
+$("amount").oninput=()=>{setAmt();renderPlan()};setAmt();
+$("addForm").onsubmit=e=>{e.preventDefault();const v=$("addSym").value.trim().toUpperCase();if(!v)return;
+  const alias={GOLD:"XAU",SILVER:"XAG",BITCOIN:"BTC"};const q=alias[v]||v;
+  const a=Object.values(A).find(a=>a.sym.toUpperCase()===q||a.k.toUpperCase()===q)||Object.values(A).find(a=>a.name.toUpperCase().includes(q));
+  if(!a){$("addSym").value="";$("addSym").placeholder="Not tracked: add to watchlist.txt";return}
+  if(a.mkt!=="ALT"&&a.mkt!==S.mkt)$("mktSeg").querySelector(`[data-v="${a.mkt}"]`).click();
+  $("addSym").value="";openDetail(a.k)};
+
+(async function start(){
+  renderWeights();clockTick();setInterval(clockTick,1000);
+  try{STATUS=await data("status.json");TRACK=await data("track.json").catch(()=>({}));await loadUniverse()}
+  catch(e){$("loadMsg").textContent="No data published yet.";$("loadHint").textContent="The first update runs a few minutes after setup. This page will reload automatically.";setTimeout(()=>location.reload(),60000);return}
+  $("loading").classList.add("hide");freshness();renderTrack();
+  setInterval(refresh,60000);
+})();
+</script>
+</body>
+</html>
