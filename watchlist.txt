@@ -1,0 +1,5 @@
+# Extra symbols to track, one per line. They appear on the site after the next update.
+# US stocks: ticker (e.g. PLTR). Saudi stocks: the 4-digit code (e.g. 4263).
+# Lines starting with # are ignored.
+PLTR
+UBER
