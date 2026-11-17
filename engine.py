@@ -93,17 +93,25 @@ class YahooProvider:
         import yfinance as yf
         self.yf = yf
     def history(self, syms, period="5y", interval="1d"):
+        """Download in small batches; retry missing symbols (Yahoo often throttles GitHub's servers)."""
         out = {}
-        for i in range(0, len(syms), 40):
-            chunk = syms[i:i+40]
-            try:
-                df = self.yf.download(chunk, period=period, interval=interval, group_by="ticker",
-                                      auto_adjust=True, threads=True, progress=False)
-            except Exception as e:
-                log.warning("download failed %s: %s", chunk[:3], e); continue
-            for s in chunk:
-                sub = _extract(df, s, len(chunk))
-                if sub is not None: out[s] = sub
+        todo = list(syms)
+        for attempt in range(4):
+            if not todo: break
+            if attempt: time.sleep(8 * attempt); log.info("retry %d for %d symbols", attempt, len(todo))
+            for i in range(0, len(todo), 20):
+                chunk = todo[i:i+20]
+                try:
+                    df = self.yf.download(chunk, period=period, interval=interval, group_by="ticker",
+                                          auto_adjust=True, threads=attempt == 0, progress=False)
+                except Exception as e:
+                    log.warning("download failed %s: %s", chunk[:3], e); time.sleep(3); continue
+                for s in chunk:
+                    sub = _extract(df, s, len(chunk))
+                    if sub is not None and len(sub) > 5: out[s] = sub
+                time.sleep(1)
+            todo = [s for s in syms if s not in out]
+        if todo: log.warning("no data for %d symbols: %s", len(todo), ", ".join(todo[:30]))
         return out
     def info(self, s):
         try: return self.yf.Ticker(s).info or {}
