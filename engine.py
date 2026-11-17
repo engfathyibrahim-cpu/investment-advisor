@@ -398,25 +398,44 @@ class Store:
         return score, sd
 
     def compute_track(self, days_td=63):
-        out = {}
+        """Backtest on real prices. For every asset we also measure a BASELINE:
+        the same buy rule applied on every day, signal or not. A signal only has
+        an edge if it works more often than that baseline."""
+        out = {}; edge = {}
         for mkt in ("US", "SA", "ALT"):
             stats = {d: [] for d in ("BUY", "HOLD", "SELL")}; bands = {"90%+": [], "70–89%": [], "50–69%": [], "<50%": []}
+            base_all = []
             for y, a in list(self.assets.items()):
                 if a["mkt"] != mkt or y not in self.fhist: continue
                 sc, sd = self.hist_decisions(y); fh = self.fhist[y]
                 c = fh["c"].values; dv = fh["dvol"].values
-                for i in range(200, len(c) - 10, 5):
+                buys, base = [], []
+                for i in range(120, len(c) - 10, 3):
                     dec, conf = decide(sc.iloc[i], sd.iloc[i])
-                    r = evaluate(c, dv, i, dec, days_td)
+                    rb = evaluate(c, dv, i, "BUY", days_td)
+                    if rb is not None: base.append(rb)
+                    r = rb if dec == "BUY" else evaluate(c, dv, i, dec, days_td)
                     if r is None: continue
-                    stats[dec].append(r)
-                    b = "90%+" if conf >= 90 else "70–89%" if conf >= 70 else "50–69%" if conf >= 50 else "<50%"
-                    bands[b].append(r[0])
+                    if dec == "BUY": buys.append(r)
+                    if i >= 200:
+                        stats[dec].append(r)
+                        b = "90%+" if conf >= 90 else "70–89%" if conf >= 70 else "50–69%" if conf >= 50 else "<50%"
+                        bands[b].append(r[0])
+                base_all += base
+                if base:
+                    edge[y] = {"n": len(buys), "hit": num(np.mean([x[0] for x in buys]) if buys else None, 3),
+                               "avg": num(np.mean([x[1] for x in buys]) if buys else None, 4),
+                               "base": num(np.mean([x[0] for x in base]), 3), "baseAvg": num(np.mean([x[1] for x in base]), 4)}
             out[mkt] = {"calls": [{"d": d, "n": len(v), "hit": num(np.mean([x[0] for x in v]) if v else None),
                                    "avg": num(np.mean([x[1] for x in v]) if v else None)} for d, v in stats.items()],
+                        "baseline": {"n": len(base_all), "hit": num(np.mean([x[0] for x in base_all]) if base_all else None),
+                                     "avg": num(np.mean([x[1] for x in base_all]) if base_all else None)},
                         "bands": [{"b": b, "n": len(v), "hit": num(np.mean(v) if v else None)} for b, v in bands.items()],
                         "days": days_td}
-        with self.lock: self.track = out
+        with self.lock:
+            self.track = out
+            for y, e in edge.items():
+                if y in self.assets: self.assets[y]["edge"] = e
 
     def similar(self, y, dec, score, days):
         sc_sd = self.hist_decisions(y)
