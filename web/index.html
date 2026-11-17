@@ -172,15 +172,15 @@ textarea.inp{width:100%;resize:vertical}
 <div class="wrap" id="bestWrap" style="grid-template-columns:1fr;padding-bottom:0">
   <section class="card" style="margin-bottom:0">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <div><h2>All markets · consolidated ranking</h2><div class="sub" style="margin:0">US, Saudi and Egyptian stocks, gold, silver and Bitcoin in one table, best first. Click a column title to sort; click a row for the full analysis.</div></div>
+      <div><h2>All markets · consolidated ranking <span class="chip" style="font-weight:500;vertical-align:middle" id="indepChip">Independent · no personal data</span></h2><div class="sub" style="margin:0">US, Saudi and Egyptian stocks, gold, silver and Bitcoin in one table, best first. Weights and chances come from ~4 years of market history, not from your settings. "Chance" = how often stocks with a similar score beat their index over the next 3 months. Click a column title to sort; click a row for the full analysis.</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div class="seg" id="bestM"><button type="button" data-v="ALL" class="on">All</button><button type="button" data-v="US">USA</button><button type="button" data-v="SA">KSA</button><button type="button" data-v="EG">Egypt</button><button type="button" data-v="ALT">BTC &amp; metals</button></div>
-        <div class="seg" id="bestW" style="width:220px"><button type="button" data-v="sys" class="on">System weights</button><button type="button" data-v="usr">Your weights</button></div>
+        <div class="seg" id="bestW" style="width:220px"><button type="button" data-v="sys" class="on">Independent</button><button type="button" data-v="usr">Your weights</button></div>
         <div class="seg" id="bestN" style="width:150px"><button type="button" data-v="20" class="on">Top 20</button><button type="button" data-v="999">All</button></div>
       </div>
     </div>
     <div style="overflow-x:auto;margin-top:10px;max-height:760px;overflow-y:auto"><table id="bestTbl"><thead><tr>
-      <th data-s="rank" class="sortable">#</th><th data-s="name" class="sortable">Asset</th><th data-s="type" class="sortable" style="text-align:left">Market</th><th data-s="chg" class="sortable">Price</th><th data-s="dec" class="sortable">Call</th><th data-s="score" class="sortable">Score</th><th data-s="conf" class="sortable">Conf.</th><th>Entry</th><th>Target</th><th data-s="exp" class="sortable">Expected</th><th data-s="days" class="sortable">Hold</th><th data-s="edge" class="sortable">Past edge</th><th style="text-align:left">Note</th></tr></thead><tbody id="bestBody"></tbody></table></div>
+      <th data-s="rank" class="sortable">#</th><th data-s="name" class="sortable">Asset</th><th data-s="type" class="sortable" style="text-align:left">Market</th><th data-s="chg" class="sortable">Price</th><th data-s="dec" class="sortable">Call</th><th data-s="score" class="sortable">Score</th><th data-s="conf" class="sortable" title="Independent view: historical chance of beating its index over ~3 months">Chance</th><th>Entry</th><th>Target</th><th data-s="exp" class="sortable">Expected</th><th data-s="days" class="sortable">Hold</th><th data-s="edge" class="sortable">Past edge</th><th style="text-align:left">Note</th></tr></thead><tbody id="bestBody"></tbody></table></div>
     <div class="hint" style="margin-top:6px">Past edge = how much more often this asset's past BUY signals beat its market (S&amp;P 500, TASI or EGX30) than buying on a random day. Positive is good.</div>
   </section>
 </div>
@@ -205,9 +205,9 @@ textarea.inp{width:100%;resize:vertical}
 
   <div class="grid2">
     <section class="card">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>System picks · Top 10</h2><span class="hint" id="sysW"></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>Independent picks · Top 10</h2><span class="hint" id="sysW"></span></div>
       <div class="sub">Ranked by the model's composite score. Click any row for the full analysis.</div>
-      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th>Conf.</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="sysBody"></tbody></table>
+      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th title="Historical chance of beating the index over ~3 months">Chance</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="sysBody"></tbody></table>
     </section>
     <section class="card">
       <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Your picks · Top 10</h2><span class="hint">Your weights &amp; filters</span></div>
@@ -230,6 +230,12 @@ textarea.inp{width:100%;resize:vertical}
     <h2>Model track record (backtest on 5 years of real prices)</h2>
     <div class="sub" id="trackSub">How the model's past calls played out, so you can check whether its confidence scores hold up.</div>
     <div id="track"><div class="empty">Calculating…</div></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Model evidence: what actually worked in this market</h2>
+    <div class="sub" id="evSub">How the independent model sets its weights and chances. Updated with every data refresh.</div>
+    <div id="evidence"><div class="empty">Calculating…</div></div>
   </section>
 
   <section class="card" style="margin-top:16px">
@@ -363,25 +369,35 @@ let A={};
 const FACT=[["tech","Technical"],["fund","Fundamental"],["val","Valuation"],["macro","Macro & news"],["risk","Risk (safety)"]];
 const S={mkt:"US",risk:"mid",hor:"mid",amount:50000,plan:"sys",w:{tech:20,fund:25,val:25,macro:15,risk:15},off:new Set()};
 const SYSW_BASE={tech:22,fund:24,val:20,macro:18,risk:16};
-function sysWeights(){const w={...SYSW_BASE};
+// Independent mode: the "system" view uses NO personal settings; weights and probabilities come from market history.
+function sysWeights(){return null}
+function evW(mkt){const t=TRACK[mkt];return t&&t.weights?t.weights:SYSW_BASE}
+function calibLookup(mkt,score){const t=TRACK[mkt];if(!t||!t.calib||!t.calib.length)return null;for(const b of t.calib)if(score<=b.hi)return b;return t.calib[t.calib.length-1]}
+function decideP(p,base){if(p>=Math.max(0.5,base+0.04))return"BUY";if(p<=Math.min(0.45,base-0.04)||p<=base-0.06)return"SELL";return"HOLD"}
+function userWeightsAdj(){const w={...SYSW_BASE};
   if(S.hor==="short"){w.tech+=12;w.fund-=6;w.val-=6}
   if(S.hor==="long"){w.tech-=10;w.fund+=6;w.val+=6;w.macro-=2}
   return w}
 
 /* ---------- decision engine (same rules as the server backtest) ---------- */
 function analyse(a,w){
+  const indep=!w;if(indep)w=evW(a.mkt);
   const tot=Object.values(w).reduce((s,x)=>s+x,0)||1;
   let score=0;for(const k in w)score+=a.f[k]*w[k]/tot;
   const vals=Object.values(a.f),mean=vals.reduce((s,x)=>s+x,0)/vals.length;
   const sd=Math.sqrt(vals.reduce((s,x)=>s+(x-mean)**2,0)/vals.length);
-  const decision=score>=60?"BUY":score<=44?"SELL":"HOLD";
-  const dist=decision==="BUY"?score-60:decision==="SELL"?44-score:Math.min(score-44,60-score);
-  // calibrate with history: did this asset's past BUY signals beat buying on any random day?
-  const E=a.edge,edgeAdj=decision==="BUY"&&E&&E.n>=8&&E.hit!=null&&E.base!=null?clamp((E.hit-E.base)*100*0.8,-25,10):0;
-  const conf=Math.round(clamp(48+dist*1.6+(25-sd)*0.9+edgeAdj,20,94));
+  const cb=indep?calibLookup(a.mkt,score):null,base=(TRACK[a.mkt]&&TRACK[a.mkt].base)||0.5;
+  let decision,conf,edgeAdj=0,days;
   const dom=Object.keys(w).sort((x,y)=>a.f[y]*w[y]-a.f[x]*w[x])[0];
-  let days={tech:30,macro:60,fund:150,val:180,risk:120}[dom]*{short:.45,mid:1,long:2}[S.hor];
-  days=Math.round(clamp(days,10,400));
+  if(cb){ // evidence: chance of beating the index over ~3 months for this score level in this market
+    decision=decideP(cb.p,base);conf=Math.round(cb.p*100);days=91;
+  }else{
+    decision=score>=60?"BUY":score<=44?"SELL":"HOLD";
+    const dist=decision==="BUY"?score-60:decision==="SELL"?44-score:Math.min(score-44,60-score);
+    const E=a.edge;edgeAdj=decision==="BUY"&&E&&E.n>=8&&E.hit!=null&&E.base!=null?clamp((E.hit-E.base)*100*0.8,-25,10):0;
+    conf=Math.round(clamp(48+dist*1.6+(25-sd)*0.9+edgeAdj,20,94));
+    days={tech:30,macro:60,fund:150,val:180,risk:120}[dom]*{short:.45,mid:1,long:2}[S.hor];
+    days=Math.round(clamp(days,10,400))}
   const p=a.last,v=a.vol||0.015,sw=v*Math.sqrt(5);
   const expMove=v*Math.sqrt(days)*((score-50)/22);
   const upside=a.fair?a.fair/p-1:0;
@@ -391,7 +407,7 @@ function analyse(a,w){
   else{entry=p*(1-1.5*sw);target=p*(1+Math.max(v*Math.sqrt(days)*0.4,0.03));stop=p*(1-3*sw);t1=target}
   const exp=decision==="SELL"?(p-target)/p:(target-entry)/entry;
   const rr=Math.abs(target-entry)/Math.abs(entry-stop);
-  return{score:Math.round(score),decision,conf,days,entry,target,stop,t1,exp,rr,dom,sd,edgeAdj};
+  return{score:Math.round(score),decision,conf,days,entry,target,stop,t1,exp,rr,dom,sd,edgeAdj,indep:!!cb,cb,base};
 }
 function holdTxt(d){return d<35?`${Math.round(d/7)}–${Math.round(d/7)+2} wks`:d<300?`${Math.round(d/30)}–${Math.round(d/30)+2} mo`:`${(d/365).toFixed(1)}+ yr`}
 
@@ -419,7 +435,7 @@ function renderTables(){
   const sys=ranked("sys"),usr=ranked("usr");
   $("sysBody").innerHTML=sys.length?sys.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Loading…</td></tr>`;
   $("usrBody").innerHTML=usr.length?usr.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Nothing matches your filters.</td></tr>`;
-  const w=sysWeights();$("sysW").textContent="Model weights · "+FACT.map(([k,l])=>l.split(" ")[0]+" "+w[k]).join(" · ");
+  const w=evW(S.mkt);$("sysW").textContent="Evidence weights · "+FACT.map(([k,l])=>l.split(" ")[0]+" "+Math.round(w[k])).join(" · ");
   document.querySelectorAll("tbody tr[data-k]").forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
 }
 function renderWeights(){
@@ -462,7 +478,7 @@ function renderAlts(){
    <div><span>Confidence</span><b>${x.conf}%</b></div><div><span>Hold</span><b>${holdTxt(x.days)}</b></div></div></div>`}).join(""):`<div class="card empty">Loading…</div>`;
   $("alts").querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openDetail(el.dataset.k));
 }
-async function renderTrack(){
+async function renderTrack(){renderEvidence();
   try{
     const t=TRACK[S.mkt]||{};
     if(!t.calls){$("track").innerHTML=`<div class="empty">Calculating…</div>`;return}
@@ -478,8 +494,9 @@ const BEST={w:"sys",n:20,m:"ALL",sort:"rank",dir:1};
 function renderBest(){
   const w=BEST.w==="sys"?sysWeights():S.w,TYPE={US:"🇺🇸 US stock",SA:"🇸🇦 Saudi stock",EG:"🇪🇬 Egyptian stock"},o={BUY:0,HOLD:1,SELL:2};
   let list=Object.values(A).filter(a=>a.f&&a.last&&(BEST.m==="ALL"||a.mkt===BEST.m));
-  if(S.risk==="low")list=list.filter(a=>a.f.risk>=40);
-  const owned=typeof H!=="undefined"?new Set(H.lots.map(l=>l.asset)):new Set();
+  const indep=BEST.w==="sys"; // independent view: no personal filters or notes
+  if(!indep&&S.risk==="low")list=list.filter(a=>a.f.risk>=40);
+  const owned=!indep&&typeof H!=="undefined"?new Set(H.lots.map(l=>l.asset)):new Set();
   let R=list.map(a=>({a,x:analyse(a,w)})).sort((p,q)=>o[p.x.decision]-o[q.x.decision]||q.x.score*q.x.conf-p.x.score*p.x.conf);
   R.forEach((r,i)=>{r.rank=i+1;r.type=r.a.mkt==="ALT"?(r.a.k==="BTC-USD"?"Bitcoin":"Precious metal"):TYPE[r.a.mkt];r.edge=r.a.edge&&r.a.edge.n>=8&&r.a.edge.hit!=null?r.a.edge.hit-r.a.edge.base:null});
   const key={rank:r=>r.rank,name:r=>(r.a.mkt==="ALT"?r.a.name:r.a.sym).toUpperCase(),type:r=>r.type,chg:r=>-(r.a.chg??-9),dec:r=>o[r.x.decision],score:r=>-r.x.score,conf:r=>-r.x.conf,exp:r=>-(r.x.decision==="SELL"?-r.x.exp:r.x.exp),days:r=>r.x.days,edge:r=>-(r.edge??-9)}[BEST.sort];
@@ -497,7 +514,7 @@ function renderBest(){
     <td style="text-align:left" class="small muted">${notes.join(" · ")}</td></tr>`}).join("")||`<tr><td colspan="13" class="empty">Nothing to show with these filters.</td></tr>`;
   $("bestBody").querySelectorAll("tr[data-k]").forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
 }
-["bestW","bestN","bestM"].forEach(id=>$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");if(id==="bestW")BEST.w=b.dataset.v;else if(id==="bestN")BEST.n=+b.dataset.v;else BEST.m=b.dataset.v;renderBest()}));
+["bestW","bestN","bestM"].forEach(id=>$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");if(id==="bestW"){BEST.w=b.dataset.v;$("indepChip").textContent=BEST.w==="sys"?"Independent · no personal data":"Your weights & risk filter";}else if(id==="bestN")BEST.n=+b.dataset.v;else BEST.m=b.dataset.v;renderBest()}));
 document.querySelectorAll("#bestTbl th[data-s]").forEach(th=>th.onclick=()=>{if(BEST.sort===th.dataset.s)BEST.dir*=-1;else{BEST.sort=th.dataset.s;BEST.dir=1}renderBest()});
 
 /* ---------- live scorecard (forward performance of logged top picks) ---------- */
@@ -524,6 +541,23 @@ function renderScore(){
    <div class="note">Judge the model by this table over months, not days. If the picks keep beating their market by more than about 50% of the time and on average, the ranking has an edge. If not, use it only as a starting list for your own research. Bitcoin, gold and silver are measured on their own price change.</div>`;
 }
 $("scSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{$("scSeg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");SC=b.dataset.v;renderScore()});
+
+/* ---------- model evidence panel ---------- */
+function renderEvidence(){
+  const t=TRACK[S.mkt],box=$("evidence");if(!box)return;
+  if(!t||!t.weights){box.innerHTML=`<div class="empty">Not available yet.</div>`;return}
+  const NM={tech:"Technical (12-month momentum)",val:"Valuation",macro:"Macro & news",risk:"Risk (safety)",fund:"Fundamental"},BN=t.bench||"index";
+  const icTxt=k=>k==="fund"?`<span class="hint">can't be tested (no free history)</span>`:S.mkt==="ALT"?`<span class="hint">not testable with 3 assets</span>`:`<span class="mono ${t.ic[k]>0.02?"up":t.ic[k]<-0.02?"down":""}">${t.ic[k]>=0?"+":""}${t.ic[k].toFixed(3)}</span>`;
+  $("evSub").textContent=`${{US:"US",SA:"Saudi",EG:"Egyptian",ALT:"Bitcoin, gold & silver"}[S.mkt]||S.mkt}: ${t.assets} assets, ${t.samples.toLocaleString()} historical cases, each followed for 3 months vs the ${BN}.`;
+  box.innerHTML=`<div class="cols" style="grid-template-columns:1fr 1.3fr"><div>
+    <table class="tbl-s"><thead><tr><th style="text-align:left">Factor</th><th>Predictive power (IC)</th><th>Weight used</th></tr></thead><tbody>
+    ${["tech","val","macro","risk","fund"].map(k=>`<tr style="cursor:default"><td style="text-align:left">${NM[k]}</td><td>${icTxt(k)}</td><td class="mono">${Math.round(t.weights[k])}%</td></tr>`).join("")}</tbody></table>
+    <div class="note">IC = average rank correlation between the factor and the next 3 months' return vs the ${BN}, measured weekly. Above 0 means stocks ranked higher on it tended to do better; 0.05 is considered meaningful. Weights = half equal, half in proportion to positive IC; factors that didn't work get only the equal share. Fundamentals can't be tested, so they get the average weight.</div></div>
+   <div><table class="tbl-s"><thead><tr><th>Score band</th><th>Cases</th><th>Beat ${esc(BN)}</th><th>Used (cautious)</th><th>Avg vs ${esc(BN)}</th></tr></thead><tbody>
+    ${(t.calib||[]).map(c=>`<tr style="cursor:default"><td class="mono">${Math.round(c.lo)}–${Math.round(c.hi)}</td><td class="mono">${c.n.toLocaleString()}</td><td class="mono">${(c.raw*100).toFixed(0)}%</td><td class="mono ${c.p>=Math.max(0.5,t.base+0.04)?"up":c.p<=t.base-0.04?"down":""}"><b>${(c.p*100).toFixed(0)}%</b></td><td class="mono ${c.ex>=0?"up":"down"}">${pct(c.ex)}</td></tr>`).join("")}
+    <tr style="cursor:default;background:var(--panel2)"><td style="text-align:left" colspan="2">Any stock (usual rate)</td><td class="mono" colspan="3">${(t.base*100).toFixed(0)}%</td></tr></tbody></table>
+    <div class="note"><b>How calls are made:</b> BUY when the cautious chance is at least 4 points above the usual rate (and above 50%); SELL when it's 4+ points below (or under 45%); otherwise HOLD. If the higher score bands don't show clearly higher "Beat" rates, the model has little edge in this market, and the page will show mostly HOLDs. That's deliberate. These rates are measured on the same history the weights came from, so they are somewhat optimistic; the live scorecard below is the true test.</div></div></div>`;
+}
 function renderAll(){renderBest();renderTables();renderPlan();renderAlts();renderFinance()}
 
 
@@ -915,7 +949,9 @@ function justification(a,x){
   const ps=[lead];
   if(strong.length)ps.push(`<b>Supporting:</b> ${strong.slice(0,3).map(f=>`${f.l} (${f.v.toFixed(0)}): ${why[f.k]}`).join("; ")}.`);
   if(weak.length)ps.push(`<b>Against:</b> ${weak.slice(0,2).map(f=>`${f.l} (${f.v.toFixed(0)}): ${whyNot[f.k]}`).join("; ")}.`);
-  ps.push(`<b>Confidence ${x.conf}%</b> reflects how far the score is from the decision threshold and how much the five factors agree (spread ${x.sd.toFixed(0)} pts). ${x.conf>=70?"The factors broadly agree.":"The factors disagree, so treat this call with caution."}${a.edge&&x.decision==="BUY"&&a.edge.n>=8?` <b>Track record on ${esc(a.sym)}:</b> past BUY signals worked ${(a.edge.hit*100).toFixed(0)}% of the time vs ${(a.edge.base*100).toFixed(0)}% when buying on any random day, so confidence was ${x.edgeAdj>=0?"raised":"lowered"} by ${Math.abs(x.edgeAdj).toFixed(0)} points.${a.edge.hit<a.edge.base?" The model has not had an edge on this asset; treat the call with extra caution.":""}`:""}`);
+  if(x.indep){const BN=(a.m&&a.m.bench)||"its index";ps.push(a.mkt==="ALT"?`<b>Chance ${x.conf}%:</b> in ${x.cb.n} past cases with a similar score (Bitcoin, gold and silver together), the price rose over the next 3 months ${(x.cb.raw*100).toFixed(0)}% of the time. Pulled toward 50% for caution: <b>${x.conf}%</b>. The usual rate was ${(x.base*100).toFixed(0)}%.`
+     :`<b>Chance ${x.conf}% of beating the ${BN}:</b> in ${x.cb.n.toLocaleString()} past cases where a stock in this market had a similar score, ${(x.cb.raw*100).toFixed(0)}% did better than the ${BN} over the next 3 months (average ${pct(x.cb.ex)} vs the index). Pulled toward 50% for caution: <b>${x.conf}%</b>. For comparison, a typical stock beat it ${(x.base*100).toFixed(0)}% of the time. The call is ${x.decision==="BUY"?"BUY because that's clearly better than usual":x.decision==="SELL"?"SELL because that's clearly worse than usual":"HOLD because it's not clearly different from usual"}.`)}
+  else ps.push(`<b>Confidence ${x.conf}%</b> reflects how far the score is from the decision threshold and how much the five factors agree (spread ${x.sd.toFixed(0)} pts). ${x.conf>=70?"The factors broadly agree.":"The factors disagree, so treat this call with caution."}${a.edge&&x.decision==="BUY"&&a.edge.n>=8?` <b>Track record on ${esc(a.sym)}:</b> past BUY signals worked ${(a.edge.hit*100).toFixed(0)}% of the time vs ${(a.edge.base*100).toFixed(0)}% when buying on any random day, so confidence was ${x.edgeAdj>=0?"raised":"lowered"} by ${Math.abs(x.edgeAdj).toFixed(0)} points.${a.edge.hit<a.edge.base?" The model has not had an edge on this asset; treat the call with extra caution.":""}`:""}`);
   ps.push(x.decision==="BUY"?`<b>Plan:</b> buy in three steps starting near ${fmt(x.entry,a.ccy)} rather than all at once, take half the profit at ${fmt(x.t1,a.ccy)} and the rest at ${fmt(x.target,a.ccy)}, and exit if it closes below ${fmt(x.stop,a.ccy)}. Reward-to-risk ≈ ${x.rr.toFixed(1)}×.`
    :x.decision==="SELL"?`<b>Plan:</b> if you hold it, sell half now and the rest on any bounce toward ${fmt(x.entry,a.ccy)}; the model sees downside toward ${fmt(x.target,a.ccy)}. Re-check if it closes above ${fmt(x.stop,a.ccy)}.`
    :`<b>Plan:</b> keep existing shares; add on dips toward ${fmt(x.entry,a.ccy)}, trim some above ${fmt(x.target,a.ccy)}, and review if it breaks ${fmt(x.stop,a.ccy)}.`);
@@ -928,8 +964,9 @@ function iterations(a,x){
   return[["Add","25%",x.entry,"Only on a dip"],["Trim","25%",x.target,"Lock in some gains"],["Review","—",x.stop,"Thesis breaks below here"]];
 }
 /* ---------- similar past signals (same rules as the Python backtest) ---------- */
-function decide4(t,v,m,r){const sc=(t*22+v*20+m*18+r*16)/76,mu=(t+v+m+r)/4,sd=Math.sqrt(((t-mu)**2+(v-mu)**2+(m-mu)**2+(r-mu)**2)/4);
-  return{sc,dec:sc>=60?"BUY":sc<=44?"SELL":"HOLD"}}
+function decide4(t,v,m,r,mkt){const W=evW(mkt),tt=W.tech+W.val+W.macro+W.risk,sc=(t*W.tech+v*W.val+m*W.macro+r*W.risk)/tt;
+  const cb=calibLookup(mkt,sc),base=(TRACK[mkt]&&TRACK[mkt].base)||0.5;
+  return{sc,dec:cb?decideP(cb.p,base):sc>=60?"BUY":sc<=44?"SELL":"HOLD"}}
 function evaluate(c,b,dv,i,dec,td){ // returns [worked, excess vs market, days held, own return]
   const n=Math.min(td,c.length-1-i);if(n<5)return null;
   const p=c[i],v=dv[i]??0.015,sw=v*Math.sqrt(5);let je=n;
@@ -937,11 +974,11 @@ function evaluate(c,b,dv,i,dec,td){ // returns [worked, excess vs market, days h
   else if(dec==="SELL"){const tg=p*(1-Math.max(0.5*v*Math.sqrt(td),0.03)),sp=p*(1+2*sw);for(let j=1;j<=n;j++)if(c[i+j]<=tg||c[i+j]>=sp){je=j;break}}
   const ret=c[i+je]/p-1,bret=b&&b[i]&&b[i+je]?b[i+je]/b[i]-1:0,ex=ret-bret;
   return[dec==="BUY"?ex>0:dec==="SELL"?ex<0:ex>-0.03,ex,je,ret]}
-function similar(D,dec,score,days){
+function similar(D,dec,score,days,mkt){
   const c=D.c,td=Math.max(5,Math.round(days*5/7)),out=[];let lastI=null;
   for(let i=c.length-6;i>260;i--){
     if(c[i]==null||D.tech[i]==null)continue;
-    const h=decide4(D.tech[i],D.val[i],D.macro[i],D.risk[i]);
+    const h=decide4(D.tech[i],D.val[i],D.macro[i],D.risk[i],mkt);
     if(h.dec!==dec||Math.abs(h.sc-score)>10)continue;
     if(lastI!==null&&lastI-i<15)continue;
     const r=evaluate(c,D.b,D.dvol,i,dec,td);if(!r)continue;lastI=i;
@@ -957,7 +994,7 @@ async function openDetail(k){
    <div><div class="hint">${{SA:"Tadawul",US:"US",EG:"Egypt (EGX)"}[a.mkt]||"Global"} · ${esc(a.sector)}</div><h3>${esc(a.name)} <span class="muted mono" style="font-size:15px">${esc(a.sym)}</span></h3>
    <div class="mono" style="font-size:22px;margin-top:4px"><span data-px="${esc(k)}">${fmt(a.last,a.ccy)}</span> <span class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(k)}">${pct(a.chg)}</span></div></div>
    <div style="display:flex;gap:16px;align-items:center;margin-left:24px"><span class="pill bigpill ${x.decision}">${x.decision}</span>
-   <div class="conf"><div class="ring" style="--p:${x.conf}"><b>${x.conf}%</b></div><div class="small muted">Confidence<br><span class="hint">Score ${x.score}/100 · ${own?"your":"system"} weights</span></div></div></div>
+   <div class="conf"><div class="ring" style="--p:${x.conf}"><b>${x.conf}%</b></div><div class="small muted">${x.indep?`Chance to beat<br>the ${esc((a.m&&a.m.bench)||"index")}`:"Confidence"}<br><span class="hint">Score ${x.score}/100 · ${own?"your weights":"independent model"}</span></div></div></div>
    <button class="close" onclick="closeDetail()">Close ✕</button></div>
   <div class="stats">
    <div class="stat"><span>${x.decision==="SELL"?"Exit at / above":"Entry price"}</span><b>${fmt(x.entry,a.ccy)}</b><small>${pct(x.entry/a.last-1)} vs now</small></div>
@@ -982,7 +1019,7 @@ async function openDetail(k){
   try{
     const D=await data("detail/"+safe(k)+".json");
     if(openKey!==k)return;
-    const L=260,d={dates:D.dates.slice(-L),close:D.c.slice(-L),sma50:D.sma50.slice(-L),news:D.news||[],similar:similar(D,x.decision,x.score,x.days)};
+    const L=260,d={dates:D.dates.slice(-L),close:D.c.slice(-L),sma50:D.sma50.slice(-L),news:D.news||[],similar:similar(D,x.decision,x.score,x.days,a.mkt)};
     drawChart(a,x,d);
     $("newsBox").className="";
     $("newsBox").innerHTML=d.news.length?`<ul>${d.news.slice(0,6).map(n=>`<li><span class="sent ${n.sent>0.1?"p":n.sent<-0.1?"n":"z"}">${n.sent>0.1?"POS":n.sent<-0.1?"NEG":"NEU"}</span><span>${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)} <span class="hint">${esc(n.publisher||"")}${n.time?" · "+new Date(n.time).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""}</span></span></li>`).join("")}</ul>`:`<div class="empty">No recent headlines found.</div>`;
