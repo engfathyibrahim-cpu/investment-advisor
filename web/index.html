@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investment Advisor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f5f7fa; --panel:#ffffff; --panel2:#f1f4f8; --line:#e2e7ee; --text:#14202e; --muted:#5b6878; --dim:#8794a5;
+  --buy:#15803d; --buy-bg:#dcfce7; --sell:#dc2626; --sell-bg:#fee2e2; --hold:#b45309; --hold-bg:#fef3c7;
+  --accent:#2563eb; --accent-bg:#e8f0ff;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cur2{color:var(--muted);font-size:.8em;font-weight:400;margin-left:6px;padding-left:6px;border-left:1px solid var(--line)}
+.stat b,.kv b{white-space:normal}
+.stat b .cur2,.kv b .cur2,.px .cur2{display:inline-block}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);z-index:20;flex-wrap:wrap}
+.brand{font-weight:700;font-size:16px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand .logo{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--accent),#22c55e)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted);background:var(--panel)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--hold);box-shadow:0 0 0 3px rgba(232,179,58,.18)}
+.dot.live{background:var(--buy);box-shadow:0 0 0 3px rgba(34,197,94,.18);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.spacer{flex:1}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;padding:16px 20px;max-width:1500px;margin:0 auto}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(20,32,46,.04)}
+.card h2{margin:0 0 4px;font-size:15px;font-weight:600}
+.card .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media(max-width:800px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
+.inp{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none;width:100%}
+.inp:focus{border-color:var(--accent)}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:none;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;white-space:nowrap}
+.seg button.on{background:var(--accent-bg);color:var(--text);box-shadow:inset 0 0 0 1px rgba(37,99,235,.45)}
+.weights{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+@media(max-width:800px){.weights{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.w label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+.w label b{color:var(--text);font-family:var(--mono);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
+.tog{padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12px;color:var(--text)}
+.tog.off{color:var(--dim);text-decoration:line-through;background:transparent}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:1750px){.grid2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);font-weight:500;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+th:nth-child(1),th:nth-child(2),td:nth-child(1),td:nth-child(2){text-align:left}
+td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+tbody tr{cursor:pointer;transition:background .12s}
+tbody tr:hover{background:var(--panel2)}
+.sym{font-weight:600}
+.nm{font-size:11px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.pill.BUY{background:var(--buy-bg);color:var(--buy)} .pill.SELL{background:var(--sell-bg);color:var(--sell)} .pill.HOLD{background:var(--hold-bg);color:var(--hold)}
+.up{color:var(--buy)} .down{color:var(--sell)}
+.flash-up{animation:fu .7s} .flash-down{animation:fd .7s}
+@keyframes fu{from{background:rgba(22,163,74,.18)}to{background:transparent}}
+@keyframes fd{from{background:rgba(220,38,38,.15)}to{background:transparent}}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;width:48px;display:inline-block;vertical-align:middle;margin-left:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.side{display:flex;flex-direction:column;gap:12px}
+.alt{cursor:pointer;transition:border-color .15s}
+.alt:hover{border-color:var(--accent)}
+.alt .top{display:flex;justify-content:space-between;align-items:flex-start}
+.alt .px{font-size:22px;font-weight:600;margin:6px 0 2px}
+.alt .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:10px;font-size:12px}
+.kv span{color:var(--muted)} .kv b{font-family:var(--mono);font-weight:500;display:block;color:var(--text)}
+.plan-row{display:grid;grid-template-columns:1.4fr .8fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:center}
+.plan-row.h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.plan-row > :not(:first-child){text-align:right}
+.note{font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px}
+.note b{color:var(--text)}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(20,32,46,.35);display:none;z-index:50;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 12px}
+.scrim.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(1080px,100%);padding:22px}
+.mh{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.mh h3{margin:0;font-size:20px}
+.close{margin-left:auto;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.bigpill{font-size:15px;padding:6px 16px}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:16px 0}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat b{display:block;font-family:var(--mono);font-size:16px;font-weight:600;margin-top:2px}
+.stat small{font-size:11px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.sec{margin-top:18px}
+.sec h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.fac{display:grid;grid-template-columns:110px 1fr 40px;gap:10px;align-items:center;margin:7px 0;font-size:13px}
+.fac .tr{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.fac .tr i{display:block;height:100%}
+.fac .det{grid-column:2/4;font-size:11.5px;color:var(--muted);margin-top:-4px}
+.just p{margin:0 0 8px;font-size:13.5px}
+.conf{display:flex;align-items:center;gap:8px}
+.ring{--p:50;width:54px;height:54px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p)*1%),var(--panel2) 0);display:grid;place-items:center}
+.ring b{width:42px;height:42px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-family:var(--mono);font-size:13px}
+.tbl-s td,.tbl-s th{padding:6px 5px;font-size:12.5px}
+.disc{font-size:11.5px;color:var(--dim);margin-top:18px;border-top:1px solid var(--line);padding-top:12px}
+.src{display:flex;gap:6px;align-items:center}
+.src select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px}
+.tabs{display:flex;gap:6px;align-items:center}
+.small{font-size:12px}
+.hint{font-size:11px;color:var(--dim)}
+
+.loading{position:fixed;inset:0;background:rgba(245,247,250,.94);z-index:60;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading.hide{display:none}
+.spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.addbox{display:flex;gap:6px}
+.addbox input{width:150px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px}
+.btn:disabled{opacity:.5}
+.news a{color:var(--text);text-decoration:none}
+.news a:hover{text-decoration:underline}
+.news li{margin:0 0 8px;font-size:13px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.news ul{padding:0;margin:0}
+.sent{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;white-space:nowrap}
+.sent.p{background:var(--buy-bg);color:var(--buy)} .sent.n{background:var(--sell-bg);color:var(--sell)} .sent.z{background:var(--panel2);color:var(--muted)}
+.empty{color:var(--muted);font-size:13px;padding:14px 4px}
+.hform{display:grid;grid-template-columns:1.2fr 1fr 1fr .8fr 1fr .8fr 1fr auto;gap:8px;align-items:end}
+@media(max-width:900px){.hform{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hform label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.hform .inp{padding:7px 8px}
+.hsum{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:14px;background:var(--panel)}
+.hsum h3{margin:0;font-size:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:12px 0}
+@media(max-width:900px){.hgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.verdict{padding:10px 12px;border-radius:8px;font-size:13.5px;margin:8px 0}
+.verdict.good{background:var(--buy-bg)} .verdict.bad{background:var(--sell-bg)} .verdict.mid{background:var(--hold-bg)}
+.lots td,.lots th{font-size:12.5px;padding:6px 5px}
+.xbtn{background:none;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--muted);padding:2px 7px}
+.xbtn:hover{color:var(--sell);border-color:var(--sell)}
+.btn2{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px}
+.mini{width:70px}
+th.sortable{cursor:pointer;user-select:none}th.sortable:hover{color:var(--text)}th.sortable::after{content:attr(data-arrow)}th.sorted{color:var(--accent)}
+.etbl td{padding:4px 4px}
+.etbl input[type=checkbox]{width:16px;height:16px}
+.fin .stat b{font-size:17px}
+#tabs button{padding:6px 14px}
+textarea.inp{width:100%;resize:vertical}
+
+</style>
+</head>
+<body>
+<div class="loading" id="loading"><div class="spin"></div><div id="loadMsg" class="muted">Loading market data…</div><div class="hint" id="loadHint"></div></div>
+<header>
+  <div class="brand"><div class="logo"></div>Investment Advisor</div>
+  <div class="seg" id="tabs" style="width:auto"><button type="button" data-t="advisor" class="on">Market advisor</button><button type="button" data-t="finances">My finances</button></div>
+  <span class="chip"><span class="dot live" id="liveDot"></span><span id="feedLabel">Connecting…</span></span>
+  <span class="chip mono" id="clock">--:--:--</span>
+  <span class="chip" id="mktUS">US —</span>
+  <span class="chip" id="mktSA">Tadawul —</span>
+  <span class="chip" id="mktEG">EGX —</span>
+  <span class="chip" id="finChip" style="display:none"></span>
+  <div class="spacer"></div>
+  <form class="addbox" id="addForm"><input class="inp mono" id="addSym" placeholder="Find: NVDA, 2222, BTC" autocomplete="off"><button class="btn" id="addBtn">Find</button></form>
+</header>
+
+<div class="wrap" id="bestWrap" style="grid-template-columns:1fr;padding-bottom:0">
+  <section class="card" style="margin-bottom:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><h2>All markets · consolidated ranking</h2><div class="sub" style="margin:0">US, Saudi and Egyptian stocks, gold, silver and Bitcoin in one table, best first. Click a column title to sort; click a row for the full analysis.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="seg" id="bestM"><button type="button" data-v="ALL" class="on">All</button><button type="button" data-v="US">USA</button><button type="button" data-v="SA">KSA</button><button type="button" data-v="EG">Egypt</button><button type="button" data-v="ALT">BTC &amp; metals</button></div>
+        <div class="seg" id="bestW" style="width:220px"><button type="button" data-v="sys" class="on">System weights</button><button type="button" data-v="usr">Your weights</button></div>
+        <div class="seg" id="bestN" style="width:150px"><button type="button" data-v="20" class="on">Top 20</button><button type="button" data-v="999">All</button></div>
+      </div>
+    </div>
+    <div style="overflow-x:auto;margin-top:10px;max-height:760px;overflow-y:auto"><table id="bestTbl"><thead><tr>
+      <th data-s="rank" class="sortable">#</th><th data-s="name" class="sortable">Asset</th><th data-s="type" class="sortable" style="text-align:left">Market</th><th data-s="chg" class="sortable">Price</th><th data-s="dec" class="sortable">Call</th><th data-s="score" class="sortable">Score</th><th data-s="conf" class="sortable">Conf.</th><th>Entry</th><th>Target</th><th data-s="exp" class="sortable">Expected</th><th data-s="days" class="sortable">Hold</th><th data-s="edge" class="sortable">Past edge</th><th style="text-align:left">Note</th></tr></thead><tbody id="bestBody"></tbody></table></div>
+    <div class="hint" style="margin-top:6px">Past edge = how much more often this asset's past BUY signals beat its market (S&amp;P 500, TASI or EGX30) than buying on a random day. Positive is good.</div>
+  </section>
+</div>
+<div class="wrap" id="advWrap">
+<main>
+  <section class="card">
+    <h2>Your investment</h2>
+    <div class="sub">Set the amount and how you invest. "Your picks" use your factor weights; "System picks" use the model's own weights for your horizon.</div>
+    <div class="controls">
+      <label class="f">Amount to invest (USD)
+        <input class="inp mono" id="amount" type="number" min="100" step="100" value="50000"><span class="hint mono" id="amtSar"></span></label>
+      <label class="f">Market
+        <div class="seg" id="mktSeg"><button type="button" data-v="US" class="on">USA</button><button type="button" data-v="SA">Saudi</button><button type="button" data-v="EG">Egypt</button></div></label>
+      <label class="f">Risk tolerance
+        <div class="seg" id="riskSeg"><button type="button" data-v="low">Low</button><button type="button" data-v="mid" class="on">Medium</button><button type="button" data-v="high">High</button></div></label>
+      <label class="f">Investment horizon
+        <div class="seg" id="horSeg"><button type="button" data-v="short">Weeks</button><button type="button" data-v="mid" class="on">Months</button><button type="button" data-v="long">1 yr+</button></div></label>
+    </div>
+    <div class="weights" id="weights"></div>
+    <div class="chips" id="sectors"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>System picks · Top 10</h2><span class="hint" id="sysW"></span></div>
+      <div class="sub">Ranked by the model's composite score. Click any row for the full analysis.</div>
+      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th>Conf.</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="sysBody"></tbody></table>
+    </section>
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Your picks · Top 10</h2><span class="hint">Your weights &amp; filters</span></div>
+      <div class="sub">Same data, re-ranked using the weights and sectors you set above.</div>
+      <table><thead><tr><th>#</th><th>Asset</th><th>Price</th><th>Call</th><th>Score</th><th>Conf.</th><th>Entry</th><th>Target</th><th>Hold</th></tr></thead><tbody id="usrBody"></tbody></table>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><h2>Suggested plan for your <span class="mono" id="amtLabel"></span></h2>
+      <div class="sub" style="margin:0">How the amount would be split across the BUY calls, staged into tranches.</div></div>
+      <div class="seg" id="planSeg" style="width:240px"><button type="button" data-v="sys" class="on">System picks</button><button type="button" data-v="usr">Your picks</button></div>
+    </div>
+    <div id="plan" style="margin-top:12px"></div>
+  </section>
+
+
+  <section class="card" style="margin-top:16px">
+    <h2>Model track record (backtest on 5 years of real prices)</h2>
+    <div class="sub" id="trackSub">How the model's past calls played out, so you can check whether its confidence scores hold up.</div>
+    <div id="track"><div class="empty">Calculating…</div></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div><h2>Live scorecard: how the published top picks really did</h2><div class="sub" style="margin:0" id="scSub">Every day the top 10 picks are saved, then compared with their market index from that day on. This is real forward performance, not a backtest.</div></div>
+      <div class="seg" id="scSeg"><button type="button" data-v="ALL" class="on">All markets</button><button type="button" data-v="US">USA</button><button type="button" data-v="SA">KSA</button><button type="button" data-v="EG">Egypt</button></div>
+    </div>
+    <div id="score" style="margin-top:12px"><div class="empty">Loading…</div></div>
+  </section>
+</main>
+
+<aside class="side">
+  <div class="card" style="padding:12px 16px"><h2>Bitcoin · Gold · Silver</h2><div class="sub" style="margin:0">Same analysis. Click for detail.</div></div>
+  <div id="alts" class="side"></div>
+  <div class="note"><b>About the data.</b> Free Yahoo Finance data: stock prices are typically <b>~15 minutes delayed</b>; Bitcoin is near real-time; gold and silver use COMEX futures (GC=F, SI=F). Data is refreshed automatically about every 10–20 minutes. SAR shown at the fixed peg of 3.75 per USD. To track more stocks, add their symbols to <b>watchlist.txt</b> in your GitHub repository.</div>
+  <div class="note">This tool supports your own research. Forecasts are probabilities based on past patterns, not guarantees, and this is not financial advice.</div>
+</aside>
+</div>
+
+
+<div class="wrap fin" id="finWrap" style="display:none">
+<main style="grid-column:1/-1">
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div><h2>My financial plan: retire at <span id="fRetAgeLbl">45</span></h2><div class="sub" style="margin:0" id="fSub">All amounts in SAR. Egyptian-pound amounts are converted at your exchange-rate assumption.</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn2" id="fExport">Download backup</button><label class="btn2" style="margin:0">Restore backup<input type="file" id="fImport" accept=".json,application/json" hidden></label></div>
+    </div>
+    <div class="hgrid" id="fKpis" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+  </section>
+
+  <div class="grid2" style="grid-template-columns:1.4fr 1fr">
+    <section class="card"><h2>Wealth path</h2><div class="sub">Your investable money (cash + investments): current plan vs the minimum path to retire on time. Dots are your recorded check-ins.</div><div style="height:320px"><canvas id="fcWealth"></canvas></div></section>
+    <section class="card"><h2>Cash flow by year</h2><div class="sub">Income vs living costs and property payments.</div><div style="height:320px"><canvas id="fcFlow"></canvas></div></section>
+  </div>
+  <section class="card" style="margin-top:16px"><h2>Cash over the next 3 years</h2><div class="sub">Month-end cash if surplus above your safety buffer is invested. Dips show months with large payments.</div><div style="height:220px"><canvas id="fcCash"></canvas></div></section>
+
+  <div class="grid2" style="grid-template-columns:1.2fr 1fr">
+    <section class="card"><h2>Your situation</h2><div class="just" id="fStory"></div></section>
+    <section class="card"><h2>What to do next</h2><ol id="fActions" style="margin:0;padding-left:18px"></ol></section>
+  </div>
+
+  <section class="card" style="margin-top:16px" id="holdingsCard">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div><h2>My investments</h2><div class="sub" style="margin:0">Record every buy and sell (stocks, Bitcoin, gold, silver). Average cost, break-even, realised and unrealised profit are worked out for you.</div></div>
+    </div>
+    <form class="hform" id="hForm" style="margin-top:12px;grid-template-columns:.7fr 1.6fr 1fr 1fr .9fr 1fr .8fr 1fr auto">
+      <label>Type<select class="inp" id="hType"><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
+      <label>Asset<select class="inp" id="hAsset"></select></label>
+      <label>Date<input class="inp" type="date" id="hDate"></label>
+      <label>Quantity<input class="inp mono" type="number" step="any" min="0" id="hQty" required></label>
+      <label>Unit<select class="inp" id="hUnit"></select></label>
+      <label>Price per unit<input class="inp mono" type="number" step="any" min="0" id="hPrice" required></label>
+      <label>Currency<select class="inp" id="hCcy"><option>SAR</option><option>USD</option><option>EGP</option></select></label>
+      <label>Fees (total)<input class="inp mono" type="number" step="any" min="0" id="hFees" placeholder="0"></label>
+      <button class="btn" id="hAdd">Add</button>
+    </form>
+    <div id="hPortfolio" style="margin-top:12px"></div>
+    <div id="holdings"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Cash savings &amp; check-ins</h2>
+    <div class="sub">Once a month, record what you actually have. It's compared with the plan and shown as a dot on the wealth chart.</div>
+    <div class="hform" style="grid-template-columns:1fr 1fr 1fr auto;max-width:760px">
+      <label>Date<input class="inp" type="date" id="ciDate"></label>
+      <label>Cash savings (SAR)<input class="inp mono" type="number" step="any" id="ciCash"></label>
+      <label>Investments value (SAR)<input class="inp mono" type="number" step="any" id="ciInv"></label>
+      <button type="button" class="btn" id="ciAdd">Record check-in</button>
+    </div>
+    <div id="ciList" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div><h2>Income &amp; regular expenses</h2><div class="sub" style="margin:0">Edit any cell. Growth = how much it rises per year. "Stops at retirement" = ends when you retire (salary, bonus).</div></div>
+      <button type="button" class="btn2" id="flAdd">+ Add row</button>
+    </div>
+    <div style="overflow-x:auto"><table class="tbl-s etbl" id="flTbl"></table></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+      <div><h2>Scheduled payments</h2><div class="sub" style="margin:0">Installments, car balloon, preparation payments. Past dates are ignored. Edit any cell or tick Paid.</div></div>
+      <div style="display:flex;gap:6px"><button type="button" class="btn2" id="pyAdd">+ Add payment</button><button type="button" class="btn2" id="pyPasteBtn">Paste a table</button></div>
+    </div>
+    <div id="pyPasteBox" style="display:none;margin:10px 0">
+      <textarea class="inp mono" id="pyPaste" rows="5" placeholder="Paste rows like:  27  Southmed  Quarterly  20-Jan-27  82,020"></textarea>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center"><span class="small muted">Currency of pasted amounts</span><select class="inp" id="pyPasteCcy" style="width:90px"><option>EGP</option><option>SAR</option><option>USD</option></select><button type="button" class="btn" id="pyPasteGo">Add rows</button><span class="hint" id="pyPasteMsg"></span></div>
+    </div>
+    <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="tbl-s etbl" id="pyTbl"></table></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Assumptions</h2>
+    <div class="sub">These drive every projection. Change them to see how sensitive the plan is.</div>
+    <div class="hform" id="asForm" style="grid-template-columns:repeat(4,minmax(0,1fr))"></div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Change history</h2>
+    <div class="sub">Every edit you make is recorded here (newest first).</div>
+    <div id="fHist" style="max-height:300px;overflow-y:auto"></div>
+  </section>
+  <div class="note" style="margin-top:16px">Your financial data is saved only in this browser on this device. It is never uploaded to GitHub. Use <b>Download backup</b> regularly, and <b>Restore backup</b> to open it on another device. This is a planning tool, not financial advice. Projections depend on the assumptions above.</div>
+</main>
+</div>
+
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+
+<script>
+const SAR=3.75;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const $=id=>document.getElementById(id);
+async function api(p){const r=await fetch(p,{cache:"no-store"});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||("HTTP "+r.status));return j}
+const data=p=>api("data/"+p+"?t="+Date.now());
+const safe=k=>k.replace(/[^A-Za-z0-9]/g,"_");
+let TRACK={},STATUS=null,FWD={};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- money: USD and SAR side by side everywhere ---------- */
+const fmt1=(x,c)=>{if(x==null||isNaN(x))return"—";const d=Math.abs(x)>=1000?0:Math.abs(x)>=100?1:2;const lc=c==="SAR"||c==="EGP";return (x<0?"-":"")+(lc?"":"$")+Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d})+(lc?" "+c:"")};
+let EGPUSD=51; // EGP per USD; replaced by the live rate from the data
+const toUSD=(x,c)=>c==="SAR"?x/SAR:c==="EGP"?x/EGPUSD:x, toSAR=(x,c)=>toUSD(x,c)*SAR;
+const fmt=(x,c)=>x==null?"—":`<span class="cur">${fmt1(toUSD(x,c),"USD")}</span><span class="cur2">${fmt1(toSAR(x,c),"SAR")}</span>${c==="EGP"?`<span class="cur2">${fmt1(x,"EGP")}</span>`:""}`;
+const fmtT=(x,c)=>`${fmt1(toUSD(x,c),"USD")} / ${fmt1(toSAR(x,c),"SAR")}`;
+const pct=x=>x==null||isNaN(x)?"—":(x>=0?"+":"")+(x*100).toFixed(1)+"%";
+const p0=x=>x==null?"—":(x*100).toFixed(1)+"%";
+
+/* ---------- state ---------- */
+let A={};
+const FACT=[["tech","Technical"],["fund","Fundamental"],["val","Valuation"],["macro","Macro & news"],["risk","Risk (safety)"]];
+const S={mkt:"US",risk:"mid",hor:"mid",amount:50000,plan:"sys",w:{tech:20,fund:25,val:25,macro:15,risk:15},off:new Set()};
+const SYSW_BASE={tech:22,fund:24,val:20,macro:18,risk:16};
+function sysWeights(){const w={...SYSW_BASE};
+  if(S.hor==="short"){w.tech+=12;w.fund-=6;w.val-=6}
+  if(S.hor==="long"){w.tech-=10;w.fund+=6;w.val+=6;w.macro-=2}
+  return w}
+
+/* ---------- decision engine (same rules as the server backtest) ---------- */
+function analyse(a,w){
+  const tot=Object.values(w).reduce((s,x)=>s+x,0)||1;
+  let score=0;for(const k in w)score+=a.f[k]*w[k]/tot;
+  const vals=Object.values(a.f),mean=vals.reduce((s,x)=>s+x,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((s,x)=>s+(x-mean)**2,0)/vals.length);
+  const decision=score>=60?"BUY":score<=44?"SELL":"HOLD";
+  const dist=decision==="BUY"?score-60:decision==="SELL"?44-score:Math.min(score-44,60-score);
+  // calibrate with history: did this asset's past BUY signals beat buying on any random day?
+  const E=a.edge,edgeAdj=decision==="BUY"&&E&&E.n>=8&&E.hit!=null&&E.base!=null?clamp((E.hit-E.base)*100*0.8,-25,10):0;
+  const conf=Math.round(clamp(48+dist*1.6+(25-sd)*0.9+edgeAdj,20,94));
+  const dom=Object.keys(w).sort((x,y)=>a.f[y]*w[y]-a.f[x]*w[x])[0];
+  let days={tech:30,macro:60,fund:150,val:180,risk:120}[dom]*{short:.45,mid:1,long:2}[S.hor];
+  days=Math.round(clamp(days,10,400));
+  const p=a.last,v=a.vol||0.015,sw=v*Math.sqrt(5);
+  const expMove=v*Math.sqrt(days)*((score-50)/22);
+  const upside=a.fair?a.fair/p-1:0;
+  let entry,target,stop,t1;
+  if(decision==="BUY"){entry=p*(1-0.5*sw);target=p*(1+Math.min(Math.max(expMove,upside*0.6,v*Math.sqrt(days)*0.6,0.03),2.5*v*Math.sqrt(days*5/7)));stop=entry*(1-2.2*sw);t1=entry+(target-entry)*0.5}
+  else if(decision==="SELL"){entry=p*(1+0.4*sw);target=p*(1-Math.max(Math.abs(expMove),v*Math.sqrt(days)*0.5,0.03));stop=entry*(1+2*sw);t1=p+(target-p)*0.5}
+  else{entry=p*(1-1.5*sw);target=p*(1+Math.max(v*Math.sqrt(days)*0.4,0.03));stop=p*(1-3*sw);t1=target}
+  const exp=decision==="SELL"?(p-target)/p:(target-entry)/entry;
+  const rr=Math.abs(target-entry)/Math.abs(entry-stop);
+  return{score:Math.round(score),decision,conf,days,entry,target,stop,t1,exp,rr,dom,sd,edgeAdj};
+}
+function holdTxt(d){return d<35?`${Math.round(d/7)}–${Math.round(d/7)+2} wks`:d<300?`${Math.round(d/30)}–${Math.round(d/30)+2} mo`:`${(d/365).toFixed(1)}+ yr`}
+
+function ranked(which){
+  const w=which==="sys"?sysWeights():S.w;
+  let list=Object.values(A).filter(a=>a.mkt===S.mkt&&a.f&&a.last);
+  if(which==="usr")list=list.filter(a=>!S.off.has(a.sector));
+  if(which==="usr"&&S.risk==="low")list=list.filter(a=>a.f.risk>=40);
+  const o={BUY:0,HOLD:1,SELL:2};
+  return list.map(a=>({a,x:analyse(a,w)})).sort((p,q)=>o[p.x.decision]-o[q.x.decision]||q.x.score*q.x.conf-p.x.score*p.x.conf).slice(0,10);
+}
+
+/* ---------- render ---------- */
+function rowHTML(i,{a,x}){return `<tr data-k="${esc(a.k)}">
+ <td class="dim mono">${i+1}</td>
+ <td><div class="sym">${esc(a.sym)}</div><div class="nm">${esc(a.name)}</div></td>
+ <td class="mono"><div data-px="${esc(a.k)}">${fmt(a.last,a.ccy)}</div><div class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(a.k)}">${pct(a.chg)}</div></td>
+ <td><span class="pill ${x.decision}">${x.decision}</span></td>
+ <td class="mono">${x.score}</td>
+ <td class="mono">${x.conf}%<span class="bar"><i style="width:${x.conf}%"></i></span></td>
+ <td class="mono">${fmt(x.entry,a.ccy)}</td>
+ <td class="mono ${x.decision==="SELL"?"down":"up"}">${fmt(x.target,a.ccy)}</td>
+ <td class="small muted">${holdTxt(x.days)}</td></tr>`}
+function renderTables(){
+  const sys=ranked("sys"),usr=ranked("usr");
+  $("sysBody").innerHTML=sys.length?sys.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Loading…</td></tr>`;
+  $("usrBody").innerHTML=usr.length?usr.map((r,i)=>rowHTML(i,r)).join(""):`<tr><td colspan="9" class="empty">Nothing matches your filters.</td></tr>`;
+  const w=sysWeights();$("sysW").textContent="Model weights · "+FACT.map(([k,l])=>l.split(" ")[0]+" "+w[k]).join(" · ");
+  document.querySelectorAll("tbody tr[data-k]").forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
+}
+function renderWeights(){
+  $("weights").innerHTML=`<div style="grid-column:1/-1;font-size:12px;color:var(--muted);margin-bottom:-6px">Your factor weights (how much each type of analysis counts in <b style="color:var(--text)">Your picks</b>)</div>`+
+   FACT.map(([k,l])=>`<div class="w"><label>${l}<b id="wv-${k}">${S.w[k]}</b></label><input type="range" min="0" max="50" value="${S.w[k]}" data-w="${k}"></div>`).join("");
+  $("weights").querySelectorAll("input").forEach(el=>el.oninput=()=>{S.w[el.dataset.w]=+el.value;$("wv-"+el.dataset.w).textContent=el.value;renderAll()});
+}
+function renderSectors(){
+  const secs=[...new Set(Object.values(A).filter(a=>a.mkt===S.mkt).map(a=>a.sector))].sort();
+  $("sectors").innerHTML=`<span class="hint" style="margin-right:4px">Sectors in your picks (click to exclude):</span>`+secs.map(s=>`<button type="button" class="tog ${S.off.has(s)?"off":""}" data-s="${esc(s)}">${esc(s)}</button>`).join("");
+  $("sectors").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.off.has(b.dataset.s)?S.off.delete(b.dataset.s):S.off.add(b.dataset.s);renderSectors();renderAll()});
+}
+function renderPlan(){
+  $("amtLabel").innerHTML=fmt(S.amount,"USD");
+  const buys=ranked(S.plan).filter(r=>r.x.decision==="BUY");
+  const cfg={low:{max:.15,cash:.25,n:6},mid:{max:.22,cash:.12,n:6},high:{max:.30,cash:.05,n:5}}[S.risk];
+  if(!buys.length){$("plan").innerHTML=`<div class="note">No BUY calls right now with these settings, so the plan keeps 100% in cash. Try the other market or loosen your filters.</div>`;return}
+  const pick=buys.slice(0,cfg.n);
+  let wts=pick.map(r=>r.x.score*r.x.conf/100);const sum=wts.reduce((s,x)=>s+x,0);
+  wts=wts.map(x=>Math.min(x/sum*(1-cfg.cash),cfg.max));
+  const cash=1-wts.reduce((s,x)=>s+x,0);
+  let h=`<div class="plan-row h"><div>Asset</div><div>Weight</div><div>Amount</div><div>Entry → Target</div><div>Tranches</div></div>`;
+  pick.forEach((r,i)=>{const{a,x}=r;const usd=S.amount*wts[i];const sh=Math.floor(toSAR(usd,"USD")/toSAR(x.entry,a.ccy));
+    h+=`<div class="plan-row" style="cursor:pointer" data-k="${esc(a.k)}"><div><span class="sym">${esc(a.sym)}</span> <span class="muted small">${esc(a.name)}</span></div>
+     <div class="mono">${(wts[i]*100).toFixed(1)}%</div><div class="mono">${fmt(Math.round(usd),"USD")}<div class="hint">≈ ${sh.toLocaleString()} shares</div></div>
+     <div class="mono small">${fmt(x.entry,a.ccy)} → <span class="up">${fmt(x.target,a.ccy)}</span><div class="hint">stop ${fmt(x.stop,a.ccy)}</div></div>
+     <div class="small muted">3 buys · 2 sells<div class="hint">${holdTxt(x.days)}</div></div></div>`});
+  h+=`<div class="plan-row"><div><span class="sym">Cash reserve</span> <span class="muted small">for dips &amp; tranches 2–3</span></div><div class="mono">${(cash*100).toFixed(1)}%</div><div class="mono">${fmt(Math.round(S.amount*cash),"USD")}</div><div></div><div></div></div>`;
+  const expRet=pick.reduce((s,r,i)=>s+wts[i]*r.x.exp*(r.x.conf/100),0);
+  h+=`<div class="note">Risk setting <b>${{low:"Low",mid:"Medium",high:"High"}[S.risk]}</b>: max <b>${cfg.max*100}%</b> in one asset, at least <b>${cfg.cash*100}%</b> kept in cash. Confidence-weighted expected return on the full amount: <b class="${expRet>=0?"up":"down"}">${pct(expRet)}</b> over the holding periods shown. Click a row for its staged buy/sell plan.</div>`;
+  $("plan").innerHTML=h;
+  $("plan").querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openDetail(el.dataset.k));
+}
+function renderAlts(){
+  const w=sysWeights();const alts=Object.values(A).filter(a=>a.mkt==="ALT"&&a.f&&a.last);
+  $("alts").innerHTML=alts.length?alts.map(a=>{const x=analyse(a,w);return `<div class="card alt" data-k="${esc(a.k)}">
+   <div class="top"><div><div class="sym">${esc(a.name)}</div><div class="hint">${esc(a.sym)}/USD</div></div><span class="pill ${x.decision}">${x.decision}</span></div>
+   <div class="px mono" data-px="${esc(a.k)}">${fmt(a.last,"USD")}</div><div class="small mono ${a.chg>=0?"up":"down"}" data-ch="${esc(a.k)}">${pct(a.chg)}</div>
+   <div class="kv"><div><span>Entry</span><b>${fmt(x.entry,"USD")}</b></div><div><span>Target</span><b class="${x.decision==="SELL"?"down":"up"}">${fmt(x.target,"USD")}</b></div>
+   <div><span>Confidence</span><b>${x.conf}%</b></div><div><span>Hold</span><b>${holdTxt(x.days)}</b></div></div></div>`}).join(""):`<div class="card empty">Loading…</div>`;
+  $("alts").querySelectorAll("[data-k]").forEach(el=>el.onclick=()=>openDetail(el.dataset.k));
+}
+async function renderTrack(){
+  try{
+    const t=TRACK[S.mkt]||{};
+    if(!t.calls){$("track").innerHTML=`<div class="empty">Calculating…</div>`;return}
+    $("trackSub").textContent=`Every 3 trading days of the last ~4 years, the model's call on each ${{US:"US",SA:"Saudi",EG:"Egyptian"}[S.mkt]} stock was replayed and followed for up to ${t.days} trading days (~3 months) on real prices, and compared with the ${t.bench||"market"} over the same days.`;
+    $("track").innerHTML=`<div class="cols" style="grid-template-columns:1fr 1fr"><table class="tbl-s"><thead><tr><th>Call</th><th></th><th>Signals</th><th>Worked</th><th>Avg result</th></tr></thead><tbody>${t.calls.map(x=>`<tr style="cursor:default"><td><span class="pill ${x.d}">${x.d}</span></td><td></td><td class="mono">${x.n}</td><td class="mono">${x.hit==null?"—":(x.hit*100).toFixed(0)+"%"}</td><td class="mono ${x.avg>=0?"up":"down"}">${pct(x.avg)}</td></tr>`).join("")}${t.baseline?`<tr style="cursor:default;background:var(--panel2)"><td colspan="2" style="text-align:left">Buy on any day (no signal)</td><td class="mono">${t.baseline.n}</td><td class="mono">${(t.baseline.hit*100).toFixed(0)}%</td><td class="mono ${t.baseline.avg>=0?"up":"down"}">${pct(t.baseline.avg)}</td></tr>`:""}</tbody></table>
+    <table class="tbl-s"><thead><tr><th>Confidence band</th><th></th><th>Signals</th><th>Worked</th></tr></thead><tbody>${t.bands.map(x=>`<tr style="cursor:default"><td>${x.b}</td><td></td><td class="mono">${x.n}</td><td class="mono">${x.hit==null?"—":(x.hit*100).toFixed(0)+"%"}<span class="bar" style="width:80px"><i style="width:${(x.hit||0)*100}%"></i></span></td></tr>`).join("")}</tbody></table></div>
+    <div class="note"><b>"Worked" now means beating the market:</b> a BUY worked if the stock did better than the ${t.bench||"market index"} over the same days (exiting early at its target or stop); a SELL worked if it did worse; a HOLD worked if it didn't trail the market by more than 3%. "Avg result" = average return <b>minus the market's</b>. Picking at random beats the market about half the time, so <b>compare every row with "Buy on any day"</b>: a signal is only useful if it does better. Each stock's own comparison raises or lowers its confidence. Factors are ranked against the other stocks in the same market; past calls use price-based factors only, because free sources don't keep historical company financials.</div>`;
+  }catch(e){$("track").innerHTML=`<div class="empty">Not available yet.</div>`}
+}
+
+/* ---------- best investments across all markets ---------- */
+const BEST={w:"sys",n:20,m:"ALL",sort:"rank",dir:1};
+function renderBest(){
+  const w=BEST.w==="sys"?sysWeights():S.w,TYPE={US:"🇺🇸 US stock",SA:"🇸🇦 Saudi stock",EG:"🇪🇬 Egyptian stock"},o={BUY:0,HOLD:1,SELL:2};
+  let list=Object.values(A).filter(a=>a.f&&a.last&&(BEST.m==="ALL"||a.mkt===BEST.m));
+  if(S.risk==="low")list=list.filter(a=>a.f.risk>=40);
+  const owned=typeof H!=="undefined"?new Set(H.lots.map(l=>l.asset)):new Set();
+  let R=list.map(a=>({a,x:analyse(a,w)})).sort((p,q)=>o[p.x.decision]-o[q.x.decision]||q.x.score*q.x.conf-p.x.score*p.x.conf);
+  R.forEach((r,i)=>{r.rank=i+1;r.type=r.a.mkt==="ALT"?(r.a.k==="BTC-USD"?"Bitcoin":"Precious metal"):TYPE[r.a.mkt];r.edge=r.a.edge&&r.a.edge.n>=8&&r.a.edge.hit!=null?r.a.edge.hit-r.a.edge.base:null});
+  const key={rank:r=>r.rank,name:r=>(r.a.mkt==="ALT"?r.a.name:r.a.sym).toUpperCase(),type:r=>r.type,chg:r=>-(r.a.chg??-9),dec:r=>o[r.x.decision],score:r=>-r.x.score,conf:r=>-r.x.conf,exp:r=>-(r.x.decision==="SELL"?-r.x.exp:r.x.exp),days:r=>r.x.days,edge:r=>-(r.edge??-9)}[BEST.sort];
+  if(BEST.sort!=="rank")R.sort((p,q)=>{const a=key(p),b=key(q);return (a<b?-1:a>b?1:0)*BEST.dir||p.rank-q.rank});else if(BEST.dir<0)R.reverse();
+  document.querySelectorAll("#bestTbl th[data-s]").forEach(th=>{th.dataset.arrow=th.dataset.s===BEST.sort?(BEST.dir>0?" ▲":" ▼"):"";th.classList.toggle("sorted",th.dataset.s===BEST.sort)});
+  $("bestBody").innerHTML=R.slice(0,BEST.n).map(({a,x,rank,type,edge})=>{
+    const notes=[];if(owned.has(a.k))notes.push("You own this");if(a.f.risk<25&&a.mkt!=="ALT"||a.mkt==="ALT"&&a.f.risk<35)notes.push("High volatility");if(x.conf<50)notes.push("Low confidence");if(!a.fundOk&&a.mkt!=="ALT")notes.push("Financials pending");
+    return `<tr data-k="${esc(a.k)}"><td class="dim mono">${rank}</td><td><div class="sym">${esc(a.mkt==="ALT"?a.name:a.sym)}</div><div class="nm">${esc(a.mkt==="ALT"?a.sym+"/USD":a.name)}</div></td>
+    <td style="text-align:left" class="small">${type}</td>
+    <td class="mono"><div data-px="${esc(a.k)}">${fmt(a.last,a.ccy)}</div><div class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(a.k)}">${pct(a.chg)}</div></td>
+    <td><span class="pill ${x.decision}">${x.decision}</span></td><td class="mono">${x.score}</td><td class="mono">${x.conf}%<span class="bar"><i style="width:${x.conf}%"></i></span></td>
+    <td class="mono">${fmt(x.entry,a.ccy)}</td><td class="mono ${x.decision==="SELL"?"down":"up"}">${fmt(x.target,a.ccy)}</td>
+    <td class="mono ${x.decision==="SELL"?"down":"up"}">${x.decision==="SELL"?"−":"+"}${(Math.abs(x.exp)*100).toFixed(1)}%</td><td class="small muted">${holdTxt(x.days)}</td>
+    <td class="mono ${edge==null?"":edge>=0.03?"up":edge<=-0.03?"down":""}">${edge==null?"—":(edge>=0?"+":"")+(edge*100).toFixed(0)+" pts"}</td>
+    <td style="text-align:left" class="small muted">${notes.join(" · ")}</td></tr>`}).join("")||`<tr><td colspan="13" class="empty">Nothing to show with these filters.</td></tr>`;
+  $("bestBody").querySelectorAll("tr[data-k]").forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
+}
+["bestW","bestN","bestM"].forEach(id=>$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");if(id==="bestW")BEST.w=b.dataset.v;else if(id==="bestN")BEST.n=+b.dataset.v;else BEST.m=b.dataset.v;renderBest()}));
+document.querySelectorAll("#bestTbl th[data-s]").forEach(th=>th.onclick=()=>{if(BEST.sort===th.dataset.s)BEST.dir*=-1;else{BEST.sort=th.dataset.s;BEST.dir=1}renderBest()});
+
+/* ---------- live scorecard (forward performance of logged top picks) ---------- */
+let SC="ALL";
+function renderScore(){
+  const F=FWD&&FWD[SC],BN={ALL:"each pick's market",US:"the S&P 500",SA:"TASI",EG:"EGX30"}[SC];
+  if(!F||!F.since){$("score").innerHTML=`<div class="empty">Logging starts with the next update. The first results appear once the picks are a week old.</div>`;return}
+  if(!F.all){$("score").innerHTML=`<div class="note">Logging started on <b>${esc(F.since)}</b> (${F.days} day${F.days>1?"s":""} of picks saved so far). Results appear once picks are at least <b>1 week old</b>; give it a few weeks before drawing conclusions.</div>`;return}
+  const A1=F.all,kp=(h,v,s2)=>`<div class="stat"><span>${h}</span><b>${v}</b><small>${s2}</small></div>`;
+  const row=(lbl,x)=>x?`<tr style="cursor:default"><td style="text-align:left">${lbl}</td><td class="mono">${x.n}</td><td class="mono ${x.beat>=0.5?"up":"down"}">${(x.beat*100).toFixed(0)}%</td><td class="mono ${x.avgEx>=0?"up":"down"}">${pct(x.avgEx)}</td><td class="mono ${x.avgRet>=0?"up":"down"}">${pct(x.avgRet)}</td></tr>`:`<tr style="cursor:default"><td style="text-align:left">${lbl}</td><td colspan="4" class="muted small">not enough data yet</td></tr>`;
+  $("score").innerHTML=`<div class="hgrid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    ${kp("Picks measured",A1.n,`since ${esc(F.since)} · ${F.days} days logged`)}
+    ${kp(`Beat ${BN}`,`<em style="font-style:normal" class="${A1.beat>=0.5?"up":"down"}">${(A1.beat*100).toFixed(0)}%</em>`,"random picking ≈ 50%")}
+    ${kp("Average vs market",`<em style="font-style:normal" class="${A1.avgEx>=0?"up":"down"}">${pct(A1.avgEx)}</em>`,"per pick, since it was published")}
+    ${kp("Average return",`<em style="font-style:normal" class="${A1.avgRet>=0?"up":"down"}">${pct(A1.avgRet)}</em>`,"per pick, before fees")}</div>
+   <div class="cols" style="grid-template-columns:1fr 1fr"><div>
+    <table class="tbl-s"><thead><tr><th style="text-align:left">Time since pick</th><th>Picks</th><th>Beat market</th><th>Avg vs market</th><th>Avg return</th></tr></thead><tbody>
+     ${Object.entries(F.buckets).map(([k,v])=>row(k,v)).join("")}</tbody></table>
+    <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:10px">
+     <div><div class="small muted" style="margin-bottom:4px">Best picks</div>${(F.best||[]).map(b=>`<div class="small mono">${esc(b.sym)} <span class="hint">${esc(b.d)}</span> <span class="${b.ex>=0?"up":"down"}">${pct(b.ex)}</span></div>`).join("")}</div>
+     <div><div class="small muted" style="margin-bottom:4px">Worst picks</div>${(F.worst||[]).map(b=>`<div class="small mono">${esc(b.sym)} <span class="hint">${esc(b.d)}</span> <span class="${b.ex>=0?"up":"down"}">${pct(b.ex)}</span></div>`).join("")}</div></div></div>
+   <div><table class="tbl-s"><thead><tr><th style="text-align:left">Day picked</th><th style="text-align:left">Top 5 that day</th><th>Beat mkt</th><th>Avg vs mkt</th></tr></thead><tbody>
+     ${F.cohorts.map(c=>`<tr style="cursor:default"><td class="mono" style="text-align:left">${esc(c.d)}</td><td style="text-align:left;white-space:normal" class="small">${c.top.map(esc).join(", ")}</td><td class="mono">${(c.beat*100).toFixed(0)}%</td><td class="mono ${c.avgEx>=0?"up":"down"}">${pct(c.avgEx)}</td></tr>`).join("")}</tbody></table></div></div>
+   <div class="note">Judge the model by this table over months, not days. If the picks keep beating their market by more than about 50% of the time and on average, the ranking has an edge. If not, use it only as a starting list for your own research. Bitcoin, gold and silver are measured on their own price change.</div>`;
+}
+$("scSeg").querySelectorAll("button").forEach(b=>b.onclick=()=>{$("scSeg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");SC=b.dataset.v;renderScore()});
+function renderAll(){renderBest();renderTables();renderPlan();renderAlts();renderFinance()}
+
+
+
+/* =====================================================================
+   MY FINANCES: investments (buy/sell), income, expenses, payments,
+   check-ins, assumptions, projection to retirement, actions, history
+   ===================================================================== */
+const OZ_G=31.1034768, HKEY="advisor-holdings-v1", FKEY="advisor-finance-v1";
+const ALTN={"BTC-USD":"Bitcoin","GC=F":"Gold","SI=F":"Silver"};
+const isMetal=k=>k==="GC=F"||k==="SI=F";
+const nameOf=k=>ALTN[k]||(A[k]?`${A[k].sym} · ${A[k].name}`:k);
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- holdings ---------- */
+let H=(()=>{const h=store.get(HKEY);if(h&&Array.isArray(h.lots))return{lots:h.lots.map(l=>({type:"buy",...l})),fee:h.fee||{},goal:h.goal||{}};return{lots:[],fee:{},goal:{}}})();
+function saveH(){store.set(HKEY,H)}
+function unitsFor(k){return k==="BTC-USD"?[["BTC","BTC"]]:isMetal(k)?[["g","grams"],["oz","troy ounces"]]:[["sh","shares"]]}
+function mktUSD(a){return a&&a.last?toUSD(a.last,a.ccy):null}
+function lotNorm(l){const q=l.unit==="g"?l.qty/OZ_G:l.qty;const toU=x=>toUSD(x,l.ccy);
+  return{q,gross:toU(l.qty*l.price),feeU:toU(l.fees||0),unitPx:toU(l.price)*(l.unit==="g"?OZ_G:1)}}
+function position(k){ // average-cost method, chronological
+  const lots=H.lots.filter(l=>l.asset===k).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  let q=0,cost=0,realized=0,invested=0;
+  for(const l of lots){const n=lotNorm(l);
+    if(l.type==="sell"){const avg=q>0?cost/q:0,sq=Math.min(n.q,q);realized+=(n.gross-n.feeU)-avg*sq;cost-=avg*sq;q-=sq;n.avgAtSale=avg;l._n=n}
+    else{q+=n.q;cost+=n.gross+n.feeU;invested+=n.gross+n.feeU;l._n=n}}
+  if(q<1e-12){q=0;cost=0}
+  return{lots,q,cost,realized,invested}}
+function holdingsValueSAR(){let v=0;for(const k of new Set(H.lots.map(l=>l.asset))){const p=position(k),px=mktUSD(A[k]);if(p.q&&px)v+=p.q*px*SAR}return v}
+function pxBoth(x,k){return isMetal(k)?`${fmt(x,"USD")} <em class="hint" style="font-style:normal">/oz</em><div class="hint" style="font-weight:400;text-transform:none">${fmt1(x/OZ_G,"USD")} · ${fmt1(x*SAR/OZ_G,"SAR")} per gram</div>`:fmt(x,"USD")}
+function qtyTxt(q,k){return k==="BTC-USD"?`${+q.toFixed(8)} BTC`:isMetal(k)?`${q.toFixed(3)} oz (${(q*OZ_G).toFixed(1)} g)`:`${+q.toFixed(4)} shares`}
+function fillAssetSelect(){
+  const sel=$("hAsset"),cur=sel.value;const grp=(lbl,list)=>list.length?`<optgroup label="${lbl}">${list.map(a=>`<option value="${esc(a.k)}">${esc(a.mkt==="ALT"?ALTN[a.k]||a.name:a.sym+" · "+a.name)}</option>`).join("")}</optgroup>`:"";
+  const all=Object.values(A),by=m=>all.filter(a=>a.mkt===m).sort((a,b)=>a.sym<b.sym?-1:1);
+  const html=grp("Bitcoin & metals",by("ALT"))+grp("US stocks",by("US"))+grp("Saudi stocks",by("SA"))+grp("Egyptian stocks",by("EG"));
+  if(sel.dataset.h!==html){sel.innerHTML=html||`<option value="BTC-USD">Bitcoin</option><option value="GC=F">Gold</option><option value="SI=F">Silver</option>`;sel.dataset.h=html;if(cur)sel.value=cur;setUnits()}}
+function setUnits(){const k=$("hAsset").value;$("hUnit").innerHTML=unitsFor(k).map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+  $("hCcy").value=A[k]&&A[k].ccy==="EGP"?"EGP":A[k]&&A[k].ccy==="USD"&&!isMetal(k)&&k!=="BTC-USD"?"USD":"SAR"}
+$("hAsset").onchange=setUnits;
+$("hDate").value=new Date().toISOString().slice(0,10);
+$("hForm").onsubmit=e=>{e.preventDefault();
+  const l={id:Date.now()+""+Math.random().toString(36).slice(2,6),type:$("hType").value,asset:$("hAsset").value,date:$("hDate").value,qty:+$("hQty").value,unit:$("hUnit").value,price:+$("hPrice").value,ccy:$("hCcy").value,fees:+$("hFees").value||0};
+  if(!(l.qty>0)||!(l.price>0))return;
+  if(l.type==="sell"){const p=position(l.asset),n=lotNorm(l);if(n.q>p.q*1.0001&&!confirm("You are selling more than this page shows you own. Add it anyway?"))return}
+  H.lots.push(l);saveH();logChange("Investments",`${l.type==="sell"?"Sold":"Bought"} ${nameOf(l.asset)}`,"",`${l.qty} ${l.unit==="sh"?"shares":l.unit} @ ${fmt1(l.price,l.ccy)}`);
+  $("hQty").value="";$("hPrice").value="";$("hFees").value="";renderFinance()};
+
+function renderHoldings(){
+  const box=$("holdings");if(!box)return;fillAssetSelect();
+  const keys=[...new Set(H.lots.map(l=>l.asset))];
+  if(!keys.length){$("hPortfolio").innerHTML="";box.innerHTML=`<div class="empty">No investments recorded yet. Add your first buy above. For gold or silver bought in grams, choose "grams".</div>`;return}
+  const P=keys.map(k=>({k,p:position(k),a:A[k]})),tot=P.reduce((s,x)=>s+(x.p.q&&mktUSD(x.a)?x.p.q*mktUSD(x.a):0),0);
+  const real=P.reduce((s,x)=>s+x.p.realized,0);
+  $("hPortfolio").innerHTML=`<table class="tbl-s"><thead><tr><th>Asset</th><th></th><th>Holding</th><th>Value</th><th>Weight</th><th>Unrealised</th><th>Realised</th><th>Model</th></tr></thead><tbody>${P.map(({k,p,a})=>{
+    const px=mktUSD(a),val=p.q&&px?p.q*px:0,un=val-p.cost,x=a&&a.f?analyse(a,sysWeights()):null;
+    return `<tr style="cursor:default"><td>${esc(nameOf(k))}</td><td></td><td class="mono">${p.q?qtyTxt(p.q,k):"closed"}</td><td class="mono">${fmt(val,"USD")}</td><td class="mono">${tot?(val/tot*100).toFixed(0)+"%":"—"}</td><td class="mono ${un>=0?"up":"down"}">${p.q?fmt(un,"USD"):"—"}</td><td class="mono ${p.realized>=0?"up":"down"}">${p.realized?fmt(p.realized,"USD"):"—"}</td><td>${x?`<span class="pill ${x.decision}">${x.decision}</span>`:""}</td></tr>`}).join("")}
+    <tr style="cursor:default;font-weight:600"><td>Total</td><td></td><td></td><td class="mono">${fmt(tot,"USD")}</td><td></td><td></td><td class="mono ${real>=0?"up":"down"}">${real?fmt(real,"USD"):"—"}</td><td></td></tr></tbody></table>`;
+  box.innerHTML=P.map(({k,p,a})=>{
+    const lots=p.lots,fee=+(H.fee[k]??0)/100,goal=+(H.goal[k]??10)/100;
+    const lotRows=lots.map(l=>{const n=l._n,r=a&&a.last&&l.type!=="sell"?mktUSD(a)*(1-fee)/n.unitPx-1:null;
+      return `<tr style="cursor:default"><td class="mono">${esc(l.date||"")}</td><td><span class="pill ${l.type==="sell"?"SELL":"BUY"}">${l.type==="sell"?"SELL":"BUY"}</span></td><td class="mono">${l.qty} ${l.unit==="sh"?"sh":l.unit}</td><td class="mono">${fmt1(l.price,l.ccy)}${l.unit==="g"?"/g":l.unit==="oz"?"/oz":""}</td><td class="mono ${r==null?"":r>=0?"up":"down"}">${r==null?(l.type==="sell"?`<span class="hint">${pct(n.unitPx/n.avgAtSale-1)} vs avg</span>`:""):pct(r)}</td><td><button type="button" class="xbtn" data-del="${esc(l.id)}" title="Delete">✕</button></td></tr>`}).join("");
+    const lotTbl=`<table class="tbl-s lots"><thead><tr><th>Date</th><th>Type</th><th>Qty</th><th>Price</th><th>Now</th><th></th></tr></thead><tbody>${lotRows}</tbody></table>`;
+    if(!p.q)return `<div class="hsum"><h3>${esc(nameOf(k))} <span class="hint" style="font-weight:400">position closed · realised ${fmt(p.realized,"USD")}</span></h3>${lotTbl}</div>`;
+    if(!a||!a.last||!a.f)return `<div class="hsum"><h3>${esc(nameOf(k))}</h3><div class="empty">Waiting for market data…</div>${lotTbl}</div>`;
+    const Q=p.q,C=p.cost,avg=C/Q,last=mktUSD(a),be=avg/(1-fee),goalPx=C*(1+goal)/(Q*(1-fee));
+    const val=Q*last*(1-fee),pl=val-C,plp=pl/C,x=analyse(a,sysWeights());
+    const toU=v=>a.ccy==="SAR"?v/SAR:v, xt1=toU(x.t1),xt=toU(x.target),xs=toU(x.stop),xe=toU(x.entry);
+    const v=last>=be?`<b>You are in profit.</b> The price is ${pct(last/be-1)} above your break-even of ${fmt(be,"USD")}. Selling all now would bring about ${fmt(val,"USD")} after fees, a profit of <b class="up">${fmt(pl,"USD")}</b> (${pct(plp)}).`
+      :`<b>Not in profit yet.</b> The price must rise <b>${pct(be/last-1)}</b> to ${fmt(be,"USD")} before you start making a profit. Selling now would lose about <b class="down">${fmt(-pl,"USD")}</b> (${pct(plp)}).`;
+    const t1=Math.max(xt1,be*1.02),t2=Math.max(xt,goalPx);
+    const adv=x.decision==="SELL"&&last>=be?`The model rates it <span class="pill SELL">SELL</span> and you are in profit, so consider selling part now (for example half) and the rest on a bounce toward ${fmt(xe,"USD")}.`
+      :x.decision==="SELL"?`The model rates it <span class="pill SELL">SELL</span> (expects weakness toward ${fmt(xt,"USD")}). Selling now would lock in a loss; the model's review level is ${fmt(xs,"USD")}.`
+      :`The model rates it <span class="pill ${x.decision}">${x.decision}</span> (${x.conf}% confidence). Suggested exits: sell <b>half at ${fmt(t1,"USD")}</b> and <b>the rest at ${fmt(t2,"USD")}</b>.`;
+    const rows=[["Start of profit (break-even)",be,"Below this you lose money after fees"],[`Your profit goal (+${(goal*100).toFixed(0)}%)`,goalPx,"Change the goal below"],
+      ...(Math.abs(xt1-xt)>xt*0.001?[["Model first target",xt1,xt1<be?"Below your break-even":"Sell part here"]]:[]),["Model target",xt,xt<be?"Below your break-even":"Sell here or above"],["Model stop / review",xs,"If it falls here, reconsider holding"]];
+    return `<div class="hsum"><h3>${esc(nameOf(k))} <span class="pill ${x.decision}">${x.decision}</span><span class="hint" style="font-weight:400">market ${pxBoth(last,k).split("<div")[0]} · ${pct(a.chg)} today</span></h3>
+     <div class="hgrid">
+      <div class="stat"><span>You hold</span><b style="font-size:14px">${qtyTxt(Q,k)}</b><small>${lots.length} transaction${lots.length>1?"s":""}</small></div>
+      <div class="stat"><span>Cost of holding</span><b>${fmt(C,"USD")}</b><small>incl. fees</small></div>
+      <div class="stat"><span>Average cost</span><b>${pxBoth(avg,k)}</b></div>
+      <div class="stat"><span>Break-even sell price</span><b class="${last>=be?"up":"down"}">${pxBoth(be,k)}</b><small>after ${(fee*100).toFixed(1)}% selling fee</small></div>
+      <div class="stat"><span>Unrealised P/L</span><b class="${pl>=0?"up":"down"}">${fmt(pl,"USD")}</b><small>${pct(plp)}</small></div>
+      <div class="stat"><span>Realised P/L</span><b class="${p.realized>=0?"up":"down"}">${fmt(p.realized,"USD")}</b><small>from past sales</small></div>
+     </div>
+     <div class="verdict ${last>=be?"good":"bad"}">${v}</div><div class="verdict mid">${adv}</div>
+     <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:6px"><div>
+      <table class="tbl-s"><thead><tr><th>Sell level</th><th></th><th>Price</th><th style="text-align:left;padding-left:10px">Note</th></tr></thead><tbody>
+      ${rows.map(([n,pp,t])=>`<tr style="cursor:default"><td>${n}</td><td></td><td class="mono ${pp>=be?"up":"down"}">${pxBoth(pp,k)}</td><td class="small muted" style="text-align:left;padding-left:10px;white-space:normal">${t}</td></tr>`).join("")}</tbody></table>
+      <div style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap" class="small muted">
+       <label>Selling fee / spread % <input class="inp mono mini" type="number" step="0.1" min="0" max="20" value="${fee*100}" data-fee="${esc(k)}"></label>
+       <label>Profit goal % <input class="inp mono mini" type="number" step="1" min="0" max="500" value="${(goal*100).toFixed(0)}" data-goal="${esc(k)}"></label></div></div>
+      <div>${lotTbl}</div></div></div>`}).join("");
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const l=H.lots.find(l=>l.id===b.dataset.del);if(!l||!confirm("Delete this transaction?"))return;H.lots=H.lots.filter(x=>x!==l);saveH();logChange("Investments","Deleted transaction",`${l.type} ${nameOf(l.asset)} ${l.qty} @ ${l.price} ${l.ccy}`,"");renderFinance()});
+  box.querySelectorAll("[data-fee]").forEach(i=>i.onchange=()=>{const o=H.fee[i.dataset.fee]??0;H.fee[i.dataset.fee]=Math.max(0,Math.min(20,+i.value||0));saveH();logChange("Investments",`${nameOf(i.dataset.fee)} selling fee %`,o,H.fee[i.dataset.fee]);renderFinance()});
+  box.querySelectorAll("[data-goal]").forEach(i=>i.onchange=()=>{const o=H.goal[i.dataset.goal]??10;H.goal[i.dataset.goal]=Math.max(0,+i.value||0);saveH();logChange("Investments",`${nameOf(i.dataset.goal)} profit goal %`,o,H.goal[i.dataset.goal]);renderFinance()});
+}
+
+/* ---------- finance data ---------- */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function parseDate(s){s=String(s).trim();let m;
+  if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  if(m=s.match(/^(\d{1,2})[-\/ ]([A-Za-z]{3})[A-Za-z]*[-\/ ](\d{2,4})$/)){const y=m[3].length===2?2000+ +m[3]:+m[3];const mo=MON[m[2].toLowerCase()];if(mo)return `${y}-${String(mo).padStart(2,"0")}-${m[1].padStart(2,"0")}`}
+  if(m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/)){const y=m[3].length===2?2000+ +m[3]:+m[3];return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
+  return null}
+function parsePaste(txt,ccy){const out=[];
+  for(const line of txt.split(/\r?\n/)){const cells=line.split(/\t|\s{2,}/).map(c=>c.trim()).filter(Boolean);if(cells.length<3)continue;
+    let di=cells.findIndex(c=>parseDate(c));if(di<0)continue;
+    const amtCell=cells.slice(di+1).find(c=>/^[\d,.\s]+$/.test(c));if(!amtCell)continue;
+    const amount=+amtCell.replace(/[,\s]/g,"");if(!(amount>0))continue;
+    let words=cells.slice(0,di).filter(c=>!/^\d+$/.test(c));
+    out.push({id:uid(),name:words[0]||"Payment",kind:words.slice(1).join(" ")||"",date:parseDate(cells[di]),amount,ccy,paid:false})}
+  return out}
+const SEED_PAY=`27 Southmed Quarterly 20-Jan-27 82,020|28 Cali Coast Mid-year 8-Feb-27 514,211|29 Southmed Maintainance 20-Feb-27 97,680|30 Southmed Quarterly 20-Apr-27 82,020|31 Cali Coast Maintainance 8-May-27 918,500|32 Southmed Yearly 20-May-27 272,500|33 Southmed Quarterly 20-Jul-27 93,210|34 Cali Coast Mid-year 8-Aug-27 514,211|35 Southmed Quarterly 20-Oct-27 93,210|36 Southmed Quarterly 20-Jan-28 93,210|37 Cali Coast Mid-year 8-Feb-28 514,211|38 Southmed Maintainance 20-Feb-28 97,680|39 Southmed Quarterly 20-Apr-28 93,210|40 Southmed Yearly 20-May-28 310,700|41 Southmed Quarterly 20-Jul-28 94,425|42 Cali Coast Mid-year 8-Aug-28 514,211|43 Southmed Quarterly 20-Oct-28 94,425|44 Southmed Quarterly 20-Jan-29 94,425|45 Cali Coast Mid-year 8-Feb-29 514,211|46 Southmed Maintainance 20-Feb-29 97,680|47 Southmed Quarterly 20-Apr-29 94,425|48 Southmed Yearly 20-May-29 314,550|49 Southmed Quarterly 20-Jul-29 96,840|50 Cali Coast Mid-year 8-Aug-29 514,211|51 Southmed Quarterly 20-Oct-29 96,840|52 Southmed Maintainance 20-Jan-30 73,260|53 Southmed Quarterly 20-Jan-30 96,840|54 Cali Coast Mid-year 8-Feb-30 514,211|55 Southmed Receival Payment 20-Feb-30 140,050|56 Southmed Quarterly 20-Apr-30 96,840|57 Southmed Yearly 20-May-30 322,200|58 Southmed Quarterly 20-Jul-30 106,230|59 Cali Coast Mid-year 8-Aug-30 514,211|60 Southmed Quarterly 20-Oct-30 106,230|61 Southmed Quarterly 20-Jan-31 106,230|62 Cali Coast Mid-year 8-Feb-31 514,211|63 Southmed Quarterly 20-Apr-31 106,230|64 Southmed Yearly 20-May-31 353,800|65 Southmed Quarterly 20-Jul-31 109,245|66 Cali Coast Mid-year 8-Aug-31 514,211|67 Southmed Quarterly 20-Oct-31 109,245|68 Southmed Quarterly 20-Jan-32 109,245|69 Cali Coast Mid-year 8-Feb-32 514,211|70 Southmed Quarterly 20-Apr-32 109,245|71 Southmed Yearly 20-May-32 363,350|72 Southmed Quarterly 20-Jul-32 111,975|73 Southmed Quarterly 20-Oct-32 111,975|74 Southmed Quarterly 20-Jan-33 111,975|75 Southmed Quarterly 20-Apr-33 111,975|76 Southmed Yearly 20-May-33 372,850|77 Southmed Quarterly 20-Jul-33 115,005|78 Southmed Quarterly 20-Oct-33 115,005|79 Southmed Quarterly 20-Jan-34 115,005|80 Southmed Quarterly 20-Apr-34 115,005|81 Southmed Yearly 20-May-34 382,400|82 Southmed Quarterly 20-Jul-34 117,720|83 Southmed Quarterly 20-Oct-34 117,720|84 Southmed Quarterly 20-Jan-35 117,720|85 Southmed Quarterly 20-Apr-35 117,720|86 Southmed Yearly 20-May-35 392,000|87 Southmed Quarterly 20-Jul-35 117,720|88 Southmed Quarterly 20-Oct-35 117,720|89 Southmed Quarterly 20-Jan-36 117,720|90 Southmed Quarterly 20-Apr-36 117,720|91 Southmed Yearly 20-May-36 392,000|92 Southmed Quarterly 20-Jul-36 117,720|93 Southmed Quarterly 20-Oct-36 117,720|94 Southmed Quarterly 20-Jan-37 117,720|95 Southmed Quarterly 20-Apr-37 117,720|96 Southmed Yearly 20-May-37 392,000`;
+function seedFinance(){
+  const pays=SEED_PAY.split("|").map(r=>{const m=r.match(/^\d+\s+(Southmed|Cali Coast)\s+(.+?)\s+(\d{1,2}-[A-Za-z]{3}-\d{2})\s+([\d,]+)$/);return{id:uid(),name:m[1],kind:m[2],date:parseDate(m[3]),amount:+m[4].replace(/,/g,""),ccy:"EGP",paid:false}});
+  pays.push({id:uid(),name:"Car",kind:"Balloon payment (set the real date)",date:"2027-12-01",amount:71550,ccy:"SAR",paid:false},
+            {id:uid(),name:"Apartment 1",kind:"Preparation payment (Q1 2029)",date:"2029-02-15",amount:40000,ccy:"SAR",paid:false},
+            {id:uid(),name:"Apartment 2",kind:"Preparation payment (Q1 2031)",date:"2031-02-15",amount:40000,ccy:"SAR",paid:false});
+  return{v:1,cash:55000,
+    profile:{birth:"1990-01-07",retireAge:45,planTo:95,inflation:2.5,raise:3,invReturn:7,cashReturn:4,swr:3.5,egpPerSar:13.6,egpWeaken:8,bufferMonths:6,autoInvest:true,extraRetire:0},
+    flows:[
+      {id:uid(),name:"Salary",type:"income",amount:16000,ccy:"SAR",freq:"monthly",month:1,start:"",end:"",growth:3,stop:true},
+      {id:uid(),name:"Annual bonus (December)",type:"income",amount:80000,ccy:"SAR",freq:"yearly",month:12,start:"",end:"",growth:0,stop:true},
+      {id:uid(),name:"Apartment rent (Egypt)",type:"income",amount:45000,ccy:"EGP",freq:"monthly",month:1,start:"",end:"",growth:8,stop:false},
+      {id:uid(),name:"Coastal rent: apartment 1 (Q3)",type:"income",amount:27000,ccy:"SAR",freq:"yearly",month:8,start:"2029-07",end:"",growth:3,stop:false},
+      {id:uid(),name:"Coastal rent: apartment 2 (Q3)",type:"income",amount:27000,ccy:"SAR",freq:"yearly",month:8,start:"2031-07",end:"",growth:3,stop:false},
+      {id:uid(),name:"Living expenses",type:"expense",amount:8000,ccy:"SAR",freq:"monthly",month:1,start:"",end:"",growth:2.5,stop:false},
+      {id:uid(),name:"Travel",type:"expense",amount:8000,ccy:"SAR",freq:"quarterly",month:3,start:"",end:"",growth:2.5,stop:false}],
+    payments:pays,checkins:[],history:[{t:new Date().toISOString(),s:"Setup",f:"Plan created from your details",o:"",n:""}]}}
+let F=store.get(FKEY)||seedFinance();
+function saveF(){store.set(FKEY,F)}
+function logChange(s,f,o,n){F.history.unshift({t:new Date().toISOString(),s,f,o:String(o??""),n:String(n??"")});if(F.history.length>800)F.history.length=800;saveF()}
+
+/* ---------- projection engine (monthly) ---------- */
+const mIdx=s=>{const [y,m]=s.split("-").map(Number);return y*12+m-1};
+const mLbl=i=>new Date(Math.floor(i/12),i%12,1).toLocaleDateString("en-GB",{month:"short",year:"numeric"});
+function nowIdx(){const d=new Date();return d.getFullYear()*12+d.getMonth()}
+function flowAmt(f,i,i0){ // amount (SAR) of a flow in month index i, or 0
+  const mo=i%12+1;
+  if(f.start&&i<mIdx(f.start))return 0; if(f.end&&i>mIdx(f.end))return 0;
+  if(f.freq==="quarterly"&&((mo-(+f.month||3))%3+3)%3!==0)return 0;
+  if(f.freq==="yearly"&&mo!==(+f.month||12))return 0;
+  const yrs=(i-i0)/12;return toSARat(f.amount*Math.pow(1+(+f.growth||0)/100,yrs),f.ccy,yrs)}
+function toSARat(x,ccy,yrs){if(ccy==="SAR")return x;if(ccy==="USD")return x*SAR;
+  const P=F.profile;return x/(+P.egpPerSar||13.6)*Math.pow(1-(+P.egpWeaken||0)/100,yrs)}
+function project(opt={}){
+  const P=F.profile,i0=nowIdx(),birth=mIdx(P.birth.slice(0,7)),iR=opt.retireIdx??birth+12*(+P.retireAge),iEnd=birth+12*(+P.planTo||95);
+  const ri=Math.pow(1+P.invReturn/100,1/12)-1,rc=Math.pow(1+P.cashReturn/100,1/12)-1;
+  let cash=+F.cash||0,inv=holdingsValueSAR();const out=[];let short=null;
+  const pays=F.payments.filter(p=>!p.paid&&p.date&&mIdx(p.date.slice(0,7))>=i0);
+  const payBy={};for(const p of pays){const k=mIdx(p.date.slice(0,7));payBy[k]=(payBy[k]||0)+toSARat(p.amount,p.ccy,(k-i0)/12)}
+  for(let i=i0;i<=iEnd;i++){
+    const retired=i>=iR;let inc=0,exp=0;
+    for(const f of F.flows){if(retired&&f.stop)continue;const v=flowAmt(f,i,i0);if(f.type==="income")inc+=v;else exp+=v}
+    if(retired)exp+=(+P.extraRetire||0)*Math.pow(1+P.inflation/100,(i-i0)/12);
+    if(!retired&&opt.extra)inc+=opt.extra;
+    const pay=payBy[i]||0,net=inc-exp-pay;
+    cash=cash*(1+rc)+net;inv=inv*(1+ri);
+    // keep a safety buffer + next 6 months of payments in cash; invest the rest
+    const monthlyExp=F.flows.filter(f=>f.type==="expense").reduce((s,f)=>s+(f.freq==="monthly"?1:f.freq==="quarterly"?1/3:1/12)*toSARat(f.amount*Math.pow(1+(+f.growth||0)/100,(i-i0)/12),f.ccy,(i-i0)/12),0);
+    let upcoming=0;for(let j=i+1;j<=i+6;j++)upcoming+=payBy[j]||0;
+    const keep=P.bufferMonths*monthlyExp+upcoming;
+    if(P.autoInvest&&cash>keep){inv+=cash-keep;cash=keep}
+    if(cash<0){const take=Math.min(-cash,Math.max(inv,0));inv-=take;cash+=take;if(cash<-1&&short==null)short=i}
+    out.push({i,cash,inv,W:cash+inv,inc,exp,pay,net,retired,keep});
+  }
+  return{rows:out,i0,iR,birth,short}}
+function targetAt(t,i0){ // money needed at month t to retire then, SAR
+  const P=F.profile;let spend=0,passive=0;
+  for(let i=t;i<t+12;i++)for(const f of F.flows){if(f.stop)continue;const v=flowAmt(f,i,i0);if(f.type==="income")passive+=v;else spend+=v}
+  spend+=(+P.extraRetire||0)*12*Math.pow(1+P.inflation/100,(t-i0)/12);
+  const need=Math.max(0,spend-passive),r=Math.pow(1+P.invReturn/100,1/12)-1;
+  let pvPay=0;for(const p of F.payments){if(p.paid||!p.date)continue;const k=mIdx(p.date.slice(0,7));if(k>=t)pvPay+=toSARat(p.amount,p.ccy,(k-i0)/12)/Math.pow(1+r,k-t)}
+  return{target:need/(P.swr/100)+pvPay,spend,passive,need,pvPay}}
+
+/* ---------- render: KPIs, charts, story, actions ---------- */
+let fCharts=[],fTimer=null;
+function renderFinance(){clearTimeout(fTimer);fTimer=setTimeout(renderFinanceNow,60)}
+function renderFinanceNow(){
+  if($("finWrap").style.display==="none"){renderHoldings();return}
+  renderHoldings();renderFlows();renderPays();renderAssump();renderCheckins();renderHist();
+  const P=F.profile,pr=project(),{rows,i0,iR,birth}=pr,r=Math.pow(1+P.invReturn/100,1/12)-1;
+  const T=targetAt(iR,i0),atR=rows.find(x=>x.i===iR-1)||rows[rows.length-1],n=Math.max(1,iR-i0);
+  const W0=(+F.cash||0)+holdingsValueSAR(),gap=T.target-atR.W;
+  const extra=gap*r/(Math.pow(1+r,n)-1);
+  const base=rows.filter(x=>x.i<iR).map(x=>{const k=x.i-i0+1;return x.W+extra*(Math.pow(1+r,k)-1)/r});
+  // earliest safe retirement age (keep working until wealth covers the target)
+  const work=project({retireIdx:1e9}).rows;let fiIdx=null;
+  for(const x of work){if(x.i<i0+1)continue;if(x.W>=targetAt(x.i+1,i0).target){fiIdx=x.i+1;break}}
+  const lastsTo=(()=>{const z=rows.find(x=>x.i>=iR&&x.W<=1);return z?z.i:null})();
+  const age=i=>((i-birth)/12);
+  // savings rate over the next 12 months
+  const nx=rows.slice(0,12),inc12=nx.reduce((s,x)=>s+x.inc,0),exp12=nx.reduce((s,x)=>s+x.exp,0),pay12=nx.reduce((s,x)=>s+x.pay,0);
+  const monthlyExp=exp12/12,bufNeed=P.bufferMonths*monthlyExp;
+  const onTrack=Math.max(0,Math.min(1.5,atR.W/T.target));
+  const ci=F.checkins.slice().sort((a,b)=>a.date<b.date?1:-1)[0];
+  $("fRetAgeLbl").textContent=P.retireAge;
+  $("fKpis").innerHTML=[
+    ["Investable money now",fmt1(W0,"SAR"),`cash ${fmt1(+F.cash,"SAR")} + investments ${fmt1(holdingsValueSAR(),"SAR")}`],
+    [`Needed at ${P.retireAge} (${mLbl(iR)})`,fmt1(T.target,"SAR"),`covers spending after rents + remaining installments`],
+    [`Projected at ${P.retireAge}`,`<span class="${atR.W>=T.target?"up":"down"}">${fmt1(atR.W,"SAR")}</span>`,`${(onTrack*100).toFixed(0)}% of what you need`],
+    [gap>0?"Extra saving needed":"Ahead of plan",gap>0?`<span class="down">${fmt1(extra,"SAR")}/mo</span>`:`<span class="up">${fmt1(-gap,"SAR")}</span>`,gap>0?`on top of today's plan, invested at ${P.invReturn}%`:`surplus at ${P.retireAge}`],
+    ["Earliest safe retirement",fiIdx?`age ${age(fiIdx).toFixed(1)}`:"after "+P.planTo,fiIdx?mLbl(fiIdx):"not reached in plan"],
+    ["Savings rate (next 12 mo)",`${inc12?((inc12-exp12-pay12)/inc12*100).toFixed(0):0}%`,`after living costs and installments`],
+    ["Safety buffer",`${monthlyExp?((+F.cash||0)/monthlyExp).toFixed(1):"—"} months`,`target ${P.bufferMonths} months = ${fmt1(bufNeed,"SAR")}`],
+    ["Money lasts until",lastsTo?`<span class="down">age ${age(lastsTo).toFixed(0)}</span>`:`<span class="up">${P.planTo}+</span>`,`if you retire at ${P.retireAge} on the current plan`]
+  ].map(([h,b,s])=>`<div class="stat"><span>${h}</span><b>${b}</b><small>${s}</small></div>`).join("");
+  // charts
+  fCharts.forEach(c=>c.destroy());fCharts=[];
+  if(typeof Chart!=="undefined"){
+    const lastI=birth+12*Math.min(70,+P.planTo),R=rows.filter(x=>x.i<=lastI&&(x.i-i0)%3===0);
+    const labels=R.map(x=>age(x.i).toFixed(1));
+    const bmap=new Map(rows.filter(x=>x.i<iR).map((x,j)=>[x.i,base[j]]));
+    const ciPts=R.map(x=>{const c=F.checkins.find(c=>{const k=mIdx(c.date.slice(0,7));return k>=x.i&&k<x.i+3});return c?(+c.cash+ +c.inv):null});
+    fCharts.push(new Chart($("fcWealth"),{type:"line",data:{labels,datasets:[
+      {label:"Current plan",data:R.map(x=>x.W),borderColor:"#2563eb",borderWidth:2,pointRadius:0,tension:.2},
+      {label:"Minimum path to retire on time",data:R.map(x=>bmap.has(x.i)?bmap.get(x.i):null),borderColor:"#16a34a",borderDash:[6,4],borderWidth:1.6,pointRadius:0},
+      {label:`Needed at ${P.retireAge}`,data:R.map(x=>Math.abs(x.i-iR)<3?T.target:null),borderColor:"#dc2626",backgroundColor:"#dc2626",pointRadius:7,pointStyle:"rectRot",showLine:false},
+      {label:"Your check-ins",data:ciPts,borderColor:"#d97706",backgroundColor:"#d97706",pointRadius:5,showLine:false}]},
+      options:{maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{title:c=>`Age ${c[0].label} · ${mLbl(R[c[0].dataIndex].i)}`,label:c=>c.raw==null?null:`${c.dataset.label}: ${fmt1(c.raw,"SAR")}`}}},
+      scales:{x:{title:{display:true,text:"Your age"},ticks:{maxTicksLimit:14,callback:(v,i)=>Math.round(+labels[i])},grid:{color:"#eef1f5"}},y:{ticks:{callback:v=>(v/1e6).toFixed(1)+"M SAR"},grid:{color:"#eef1f5"}}}}}));
+    const yrs={};for(const x of rows){const y=Math.floor(x.i/12);if(y>Math.floor(lastI/12))break;(yrs[y]=yrs[y]||{inc:0,exp:0,pay:0});yrs[y].inc+=x.inc;yrs[y].exp+=x.exp;yrs[y].pay+=x.pay}
+    const Y=Object.keys(yrs);
+    fCharts.push(new Chart($("fcFlow"),{type:"bar",data:{labels:Y,datasets:[
+      {label:"Income",data:Y.map(y=>yrs[y].inc),backgroundColor:"#16a34a",stack:"a"},
+      {label:"Living & travel",data:Y.map(y=>-yrs[y].exp),backgroundColor:"#d97706",stack:"b"},
+      {label:"Property & other payments",data:Y.map(y=>-yrs[y].pay),backgroundColor:"#dc2626",stack:"b"},
+      {label:"Net saved",type:"line",data:Y.map(y=>yrs[y].inc-yrs[y].exp-yrs[y].pay),borderColor:"#14202e",pointRadius:2,borderWidth:1.5}]},
+      options:{maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt1(Math.abs(c.raw),"SAR")}`}}},
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>(v/1000).toFixed(0)+"k"},grid:{color:"#eef1f5"}}}}}));
+    const C36=rows.slice(0,36);
+    fCharts.push(new Chart($("fcCash"),{type:"line",data:{labels:C36.map(x=>mLbl(x.i)),datasets:[
+      {label:"Cash kept",data:C36.map(x=>x.cash),borderColor:"#2563eb",borderWidth:2,pointRadius:2,fill:false},
+      {label:"Payments that month",type:"bar",data:C36.map(x=>x.pay||null),backgroundColor:"rgba(220,38,38,.35)"},
+      {label:"Buffer to keep",data:C36.map(x=>x.keep),borderColor:"#16a34a",borderDash:[5,4],borderWidth:1.2,pointRadius:0}]},
+      options:{maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.raw==null?null:`${c.dataset.label}: ${fmt1(c.raw,"SAR")}`}}},
+      scales:{x:{ticks:{maxTicksLimit:12},grid:{display:false}},y:{ticks:{callback:v=>(v/1000).toFixed(0)+"k"},grid:{color:"#eef1f5"}}}}}));
+  }
+  // story
+  const egpPays=F.payments.filter(p=>!p.paid&&p.date&&mIdx(p.date.slice(0,7))>=i0);
+  const paySAR=egpPays.reduce((s,p)=>s+toSARat(p.amount,p.ccy,(mIdx(p.date.slice(0,7))-i0)/12),0);
+  const lastPay=egpPays.map(p=>p.date).sort().pop();
+  const big=rows.slice(0,36).filter(x=>x.pay>0).sort((a,b)=>b.pay-a.pay)[0];
+  const ageNow=age(i0);
+  const st=[];
+  st.push(`You are <b>${Math.floor(ageNow)}</b> and want to retire at <b>${P.retireAge}</b> (${mLbl(iR)}), which is <b>${((iR-i0)/12).toFixed(1)} years</b> away. Today you have about <b>${fmt1(W0,"SAR")}</b> of investable money (${fmt1(+F.cash,"SAR")} cash and ${fmt1(holdingsValueSAR(),"SAR")} in investments).`);
+  st.push(`Over the next 12 months you expect about <b>${fmt1(inc12,"SAR")}</b> of income, <b>${fmt1(exp12,"SAR")}</b> of living and travel costs and <b>${fmt1(pay12,"SAR")}</b> of property and other payments, leaving <b class="${inc12-exp12-pay12>=0?"up":"down"}">${fmt1(inc12-exp12-pay12,"SAR")}</b> to save. Your remaining scheduled payments total about <b>${fmt1(paySAR,"SAR")}</b> (at your exchange-rate assumptions) and run until <b>${lastPay?new Date(lastPay).toLocaleDateString("en-GB",{month:"short",year:"numeric"}):"—"}</b>${big?`; the largest in the next 3 years is ${fmt1(big.pay,"SAR")} in ${mLbl(big.i)}`:""}.`);
+  st.push(`<b>What "safe" means here:</b> after you stop working, your rents are expected to bring about <b>${fmt1(T.passive/12,"SAR")}/month</b> while your spending would be about <b>${fmt1(T.spend/12,"SAR")}/month</b> (today's lifestyle grown by inflation). The gap of ${fmt1(T.need/12,"SAR")}/month must come from investments withdrawn at no more than <b>${P.swr}%</b> a year, so the money can last 50 years. That needs <b>${fmt1(T.need/(P.swr/100),"SAR")}</b>, plus <b>${fmt1(T.pvPay,"SAR")}</b> set aside for installments still due after you retire. Target: <b>${fmt1(T.target,"SAR")}</b>.`);
+  st.push(gap>0?`<b>Where you stand:</b> on the current plan you would have about <b>${fmt1(atR.W,"SAR")}</b> at ${P.retireAge}, which is <b class="down">${(onTrack*100).toFixed(0)}%</b> of the target, a shortfall of ${fmt1(gap,"SAR")}. To close it you need to save and invest about <b>${fmt1(extra,"SAR")} more per month</b> from now on. ${fiIdx?`Without changes, you could retire safely at about <b>age ${age(fiIdx).toFixed(1)}</b>.`:""}`
+    :`<b>Where you stand:</b> you are <b class="up">on track</b>. The current plan reaches about ${fmt1(atR.W,"SAR")} at ${P.retireAge}, ${(onTrack*100).toFixed(0)}% of the target.${fiIdx?` You could retire safely from about age ${age(fiIdx).toFixed(1)}.`:""}`);
+  if(pr.short)st.push(`<b class="down">Warning:</b> in ${mLbl(pr.short)} your cash and investments would not cover your payments. See the actions list.`);
+  $("fStory").innerHTML=st.map(p=>`<p>${p}</p>`).join("");
+  // actions
+  const acts=[];
+  const travel=F.flows.find(f=>/travel/i.test(f.name)&&f.type==="expense");
+  if((+F.cash||0)<bufNeed)acts.push(`<b>Build your safety buffer</b> to ${fmt1(bufNeed,"SAR")} (${P.bufferMonths} months of costs) before investing more. You're ${fmt1(bufNeed-(+F.cash||0),"SAR")} short.`);
+  const crunch=rows.slice(0,24).filter(x=>x.pay>x.keep*0.6&&x.pay>0)[0];
+  if(crunch)acts.push(`<b>Prepare for ${mLbl(crunch.i)}:</b> a payment of about ${fmt1(crunch.pay,"SAR")} is due. Keep that amount in cash or a money-market fund from ${mLbl(crunch.i-3)}, not in stocks or Bitcoin.`);
+  if(gap>0){acts.push(`<b>Invest an extra ${fmt1(extra,"SAR")} a month</b> (or ${fmt1(extra*12,"SAR")} a year, for example from your December bonus) in a diversified, low-cost global fund to reach your target at ${P.retireAge}.`);
+    if(travel){const cut=Math.min(travel.amount,extra*3);acts.push(`<b>Or trim travel:</b> each 1,000 SAR less per quarter adds about ${fmt1(1000/3*(Math.pow(1+r,n)-1)/r,"SAR")} by ${P.retireAge}. Cutting ${fmt1(cut,"SAR")}/quarter would cover ${Math.min(100,cut/3/extra*100).toFixed(0)}% of the gap.`)}
+    if(fiIdx)acts.push(`<b>Or retire a little later:</b> on today's plan, retiring at ${age(fiIdx).toFixed(1)} is safe, with no other changes.`)}
+  else acts.push(`<b>Stay the course:</b> keep investing your surplus each month and record a check-in monthly.`);
+  const hv=holdingsValueSAR();
+  if(hv>0){const keys=[...new Set(H.lots.map(l=>l.asset))];let maxW=0,maxK="",crypto=0;
+    for(const k of keys){const p=position(k),px=mktUSD(A[k]);if(!p.q||!px)continue;const v=p.q*px*SAR;if(v/hv>maxW){maxW=v/hv;maxK=k}if(k==="BTC-USD")crypto=v}
+    if(maxW>0.4&&keys.length>1)acts.push(`<b>Diversify:</b> ${nameOf(maxK)} is ${(maxW*100).toFixed(0)}% of your investments. Keeping any single holding under about 25% lowers the risk of one bad year derailing the plan.`);
+    if(crypto/(hv+(+F.cash||0))>0.1)acts.push(`<b>Watch Bitcoin size:</b> it is ${(crypto/(hv+(+F.cash||0))*100).toFixed(0)}% of your investable money. It can fall 50%+ in a year; many planners keep it under 5–10%.`);
+    for(const k of keys){const a=A[k],p=position(k),px=mktUSD(a);if(!p.q||!a||!a.f)continue;const x=analyse(a,sysWeights()),be=p.cost/p.q/(1-(+(H.fee[k]??0))/100);
+      if(x.decision==="SELL"&&px>=be)acts.push(`<b>${nameOf(k)}:</b> the model says SELL and you're in profit. Consider taking some profit.`)}}
+  else acts.push(`<b>Record your investments</b> in "My investments" so the plan counts them.`);
+  if((+F.cash||0)>bufNeed*2)acts.push(`<b>Put idle cash to work:</b> you hold ${fmt1(+F.cash,"SAR")} in cash, more than twice your buffer. Money not needed for the next 6 months of payments could be invested.`);
+  const egpShare=T.passive?F.flows.filter(f=>!f.stop&&f.type==="income"&&f.ccy==="EGP").reduce((s,f)=>{let v=0;for(let i=iR;i<iR+12;i++)v+=flowAmt(f,i,i0);return s+v},0)/T.passive:0;
+  if(egpShare>0.3)acts.push(`<b>Currency risk:</b> ${(egpShare*100).toFixed(0)}% of your retirement rent income is in Egyptian pounds. If the pound weakens faster than ${P.egpWeaken}%/yr, the plan needs more savings. Revisit the assumption yearly.`);
+  if(!ci||(Date.now()-new Date(ci.date))/864e5>35)acts.push(`<b>Record a monthly check-in</b> (cash + investments) so the chart shows whether you're above or below the minimum path.`);
+  if(F.payments.some(p=>/set the real date/i.test(p.kind)))acts.push(`<b>Set the car balloon payment's real date</b> in Scheduled payments (currently assumed Dec 2027).`);
+  $("fActions").innerHTML=acts.map(a=>`<li style="margin-bottom:8px;font-size:13.5px">${a}</li>`).join("");
+}
+
+/* ---------- editors ---------- */
+function cellInp(v,attrs,type="text",w=""){return `<input class="inp ${type==="number"?"mono":""}" style="padding:4px 6px;${w}" type="${type}" value="${esc(v??"")}" ${attrs}>`}
+function renderFlows(){
+  const fq={monthly:"Monthly",quarterly:"Quarterly",yearly:"Yearly"};
+  $("flTbl").innerHTML=`<thead><tr><th style="text-align:left">Name</th><th>Type</th><th>Amount</th><th>Currency</th><th>How often</th><th>Month</th><th>From (yyyy-mm)</th><th>Until</th><th>Growth %/yr</th><th>Stops at retirement</th><th>≈ SAR / month now</th><th></th></tr></thead><tbody>${F.flows.map(f=>{
+    const i0=nowIdx();let s=0;for(let i=i0;i<i0+12;i++)s+=flowAmt(f,i,i0);
+    return `<tr data-id="${f.id}" style="cursor:default"><td style="text-align:left">${cellInp(f.name,'data-f="name"',"text","width:220px")}</td>
+    <td><select class="inp" data-f="type" style="padding:4px"><option value="income" ${f.type==="income"?"selected":""}>Income</option><option value="expense" ${f.type==="expense"?"selected":""}>Expense</option></select></td>
+    <td>${cellInp(f.amount,'data-f="amount" step="any"',"number","width:100px")}</td>
+    <td><select class="inp" data-f="ccy" style="padding:4px">${["SAR","EGP","USD"].map(c=>`<option ${f.ccy===c?"selected":""}>${c}</option>`).join("")}</select></td>
+    <td><select class="inp" data-f="freq" style="padding:4px">${Object.entries(fq).map(([k,v])=>`<option value="${k}" ${f.freq===k?"selected":""}>${v}</option>`).join("")}</select></td>
+    <td>${f.freq==="monthly"?"—":cellInp(f.month,'data-f="month" min="1" max="12"',"number","width:56px")}</td>
+    <td>${cellInp(f.start,'data-f="start" placeholder="now"',"text","width:90px")}</td>
+    <td>${cellInp(f.end,'data-f="end" placeholder="—"',"text","width:90px")}</td>
+    <td>${cellInp(f.growth,'data-f="growth" step="0.1"',"number","width:64px")}</td>
+    <td><input type="checkbox" data-f="stop" ${f.stop?"checked":""}></td>
+    <td class="mono ${f.type==="income"?"up":"down"}">${fmt1(s/12,"SAR")}</td>
+    <td><button type="button" class="xbtn" data-delf="${f.id}">✕</button></td></tr>`}).join("")}</tbody>`;
+  bindEditor($("flTbl"),F.flows,"Income & expenses",r=>r.name);
+  $("flTbl").querySelectorAll("[data-delf]").forEach(b=>b.onclick=()=>{const f=F.flows.find(x=>x.id===b.dataset.delf);if(!confirm(`Delete "${f.name}"?`))return;F.flows=F.flows.filter(x=>x!==f);logChange("Income & expenses","Deleted row",f.name,"");saveF();renderFinance()});
+}
+function renderPays(){
+  const i0=nowIdx(),L=F.payments.slice().sort((a,b)=>a.date<b.date?-1:1);
+  let tot=0;
+  $("pyTbl").innerHTML=`<thead><tr><th style="text-align:left">Project / item</th><th style="text-align:left">Type</th><th>Due date</th><th>Amount</th><th>Currency</th><th>≈ SAR then</th><th>Paid</th><th></th></tr></thead><tbody>${L.map(p=>{
+    const k=p.date?mIdx(p.date.slice(0,7)):0,past=k<i0,s=toSARat(p.amount,p.ccy,Math.max(0,(k-i0)/12));if(!past&&!p.paid)tot+=s;
+    return `<tr data-id="${p.id}" style="cursor:default;${past||p.paid?"opacity:.5":""}"><td style="text-align:left">${cellInp(p.name,'data-f="name"',"text","width:130px")}</td><td style="text-align:left">${cellInp(p.kind,'data-f="kind"',"text","width:200px")}</td>
+    <td>${cellInp(p.date,'data-f="date"',"date")}</td><td>${cellInp(p.amount,'data-f="amount" step="any"',"number","width:110px")}</td>
+    <td><select class="inp" data-f="ccy" style="padding:4px">${["EGP","SAR","USD"].map(c=>`<option ${p.ccy===c?"selected":""}>${c}</option>`).join("")}</select></td>
+    <td class="mono">${fmt1(s,"SAR")}</td><td><input type="checkbox" data-f="paid" ${p.paid?"checked":""}></td><td><button type="button" class="xbtn" data-delp="${p.id}">✕</button></td></tr>`}).join("")}
+    <tr style="cursor:default;font-weight:600"><td colspan="5" style="text-align:left">Remaining (unpaid, future)</td><td class="mono">${fmt1(tot,"SAR")}</td><td colspan="2"></td></tr></tbody>`;
+  bindEditor($("pyTbl"),F.payments,"Payments",r=>`${r.name} ${r.kind} ${r.date}`);
+  $("pyTbl").querySelectorAll("[data-delp]").forEach(b=>b.onclick=()=>{const p=F.payments.find(x=>x.id===b.dataset.delp);if(!confirm(`Delete ${p.name} ${p.kind} (${p.date})?`))return;F.payments=F.payments.filter(x=>x!==p);logChange("Payments","Deleted",`${p.name} ${p.kind} ${p.date} ${p.amount} ${p.ccy}`,"");saveF();renderFinance()});
+}
+function bindEditor(tbl,list,section,label){
+  tbl.querySelectorAll("tr[data-id] [data-f]").forEach(el=>el.onchange=()=>{
+    const row=list.find(x=>x.id===el.closest("tr").dataset.id),f=el.dataset.f;
+    let v=el.type==="checkbox"?el.checked:el.type==="number"?+el.value:el.value.trim();
+    if((f==="start"||f==="end")&&v&&!/^\d{4}-\d{2}$/.test(v)){const d=parseDate(v+(v.length===7?"-01":""));v=d?d.slice(0,7):"";el.value=v}
+    const o=row[f];if(o===v)return;row[f]=v;logChange(section,`${label(row)}: ${f}`,o,v);saveF();renderFinance()});
+}
+const ASSUME=[["birth","Date of birth","date"],["retireAge","Retire at age","number"],["planTo","Plan until age","number"],["swr","Safe withdrawal rate % / yr","number"],
+  ["invReturn","Investment return % / yr","number"],["cashReturn","Cash / savings return % / yr","number"],["inflation","Inflation % / yr (SAR)","number"],["raise","Salary growth % / yr (info)","number"],
+  ["egpPerSar","EGP per 1 SAR today","number"],["egpWeaken","EGP weakens vs SAR % / yr","number"],["bufferMonths","Safety buffer (months of costs)","number"],["extraRetire","Extra spending in retirement (SAR/mo, today's money)","number"]];
+function renderAssump(){const P=F.profile;
+  $("asForm").innerHTML=ASSUME.map(([k,l,t])=>`<label>${l}<input class="inp mono" type="${t}" step="any" data-a="${k}" value="${esc(P[k])}"></label>`).join("")+
+    `<label>Invest surplus cash automatically<select class="inp" data-a="autoInvest"><option value="1" ${P.autoInvest?"selected":""}>Yes</option><option value="0" ${!P.autoInvest?"selected":""}>No, keep it in cash</option></select></label>
+     <label>Current cash savings (SAR)<input class="inp mono" type="number" step="any" data-cash value="${esc(F.cash)}"></label>`+(STATUS&&STATUS.egpPerUsd?`<div class="hint" style="grid-column:1/-1">Live market rate today: <b>${(STATUS.egpPerUsd/SAR).toFixed(2)} EGP per SAR</b>. <button type="button" class="btn2" data-livefx>Use live rate</button></div>`:"");
+  $("asForm").querySelectorAll("[data-a]").forEach(el=>el.onchange=()=>{const k=el.dataset.a,o=P[k];const v=k==="autoInvest"?el.value==="1":el.type==="number"?+el.value:el.value;if(o===v)return;P[k]=v;logChange("Assumptions",(ASSUME.find(a=>a[0]===k)||[k,k])[1],o,v);saveF();renderFinance()});
+  const lf=$("asForm").querySelector("[data-livefx]");if(lf)lf.onclick=()=>{const o=P.egpPerSar;P.egpPerSar=+(STATUS.egpPerUsd/SAR).toFixed(2);logChange("Assumptions","EGP per 1 SAR today",o,P.egpPerSar);saveF();renderFinance()};
+  $("asForm").querySelector("[data-cash]").onchange=e=>{const o=F.cash;F.cash=+e.target.value||0;logChange("Cash","Cash savings",o,F.cash);saveF();renderFinance()};
+}
+function renderCheckins(){
+  if(!$("ciDate").value)$("ciDate").value=new Date().toISOString().slice(0,10);
+  if(document.activeElement!==$("ciCash"))$("ciCash").value=F.cash;
+  if(document.activeElement!==$("ciInv"))$("ciInv").value=Math.round(holdingsValueSAR());
+  const pr=project(),L=F.checkins.slice().sort((a,b)=>a.date<b.date?1:-1);
+  $("ciList").innerHTML=L.length?`<table class="tbl-s" style="max-width:760px"><thead><tr><th>Date</th><th>Cash</th><th>Investments</th><th>Total</th><th>Change vs previous</th><th></th></tr></thead><tbody>${L.map((c,j)=>{const t=+c.cash+ +c.inv,p=L[j+1]?(+L[j+1].cash+ +L[j+1].inv):null;
+    return `<tr style="cursor:default"><td class="mono">${esc(c.date)}</td><td class="mono">${fmt1(+c.cash,"SAR")}</td><td class="mono">${fmt1(+c.inv,"SAR")}</td><td class="mono"><b>${fmt1(t,"SAR")}</b></td><td class="mono ${p==null?"":t>=p?"up":"down"}">${p==null?"—":fmt1(t-p,"SAR")}</td><td><button type="button" class="xbtn" data-delc="${esc(c.date)}">✕</button></td></tr>`}).join("")}</tbody></table>`:`<div class="empty">No check-ins yet.</div>`;
+  $("ciList").querySelectorAll("[data-delc]").forEach(b=>b.onclick=()=>{F.checkins=F.checkins.filter(c=>c.date!==b.dataset.delc);logChange("Check-ins","Deleted check-in",b.dataset.delc,"");saveF();renderFinance()});
+}
+$("ciAdd").onclick=()=>{const d=$("ciDate").value,c=+$("ciCash").value||0,v=+$("ciInv").value||0;if(!d)return;
+  F.checkins=F.checkins.filter(x=>x.date!==d);F.checkins.push({date:d,cash:c,inv:v});const o=F.cash;F.cash=c;
+  logChange("Check-ins",`Check-in ${d}`,"",`cash ${c}, investments ${v}`);if(o!==c)logChange("Cash","Cash savings",o,c);saveF();renderFinance()};
+function renderHist(){$("fHist").innerHTML=F.history.length?`<table class="tbl-s"><thead><tr><th>When</th><th style="text-align:left">Section</th><th style="text-align:left">What</th><th style="text-align:left">From</th><th style="text-align:left">To</th></tr></thead><tbody>${F.history.slice(0,300).map(h=>`<tr style="cursor:default"><td class="mono small">${new Date(h.t).toLocaleString("en-GB",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</td><td style="text-align:left">${esc(h.s)}</td><td style="text-align:left;white-space:normal">${esc(h.f)}</td><td style="text-align:left" class="muted">${esc(h.o)}</td><td style="text-align:left">${esc(h.n)}</td></tr>`).join("")}</tbody></table>`:`<div class="empty">No changes yet.</div>`}
+$("flAdd").onclick=()=>{F.flows.push({id:uid(),name:"New item",type:"expense",amount:0,ccy:"SAR",freq:"monthly",month:1,start:"",end:"",growth:2.5,stop:false});logChange("Income & expenses","Added row","","New item");saveF();renderFinance()};
+$("pyAdd").onclick=()=>{F.payments.push({id:uid(),name:"New payment",kind:"",date:new Date().toISOString().slice(0,10),amount:0,ccy:"SAR",paid:false});logChange("Payments","Added payment","","New payment");saveF();renderFinance()};
+$("pyPasteBtn").onclick=()=>{const b=$("pyPasteBox");b.style.display=b.style.display==="none"?"":"none"};
+$("pyPasteGo").onclick=()=>{const rows=parsePaste($("pyPaste").value,$("pyPasteCcy").value);$("pyPasteMsg").textContent=rows.length?`Added ${rows.length} payment${rows.length>1?"s":""}.`:"No rows recognised. Each row needs a date like 20-Jan-27 and an amount.";
+  if(rows.length){F.payments.push(...rows);logChange("Payments",`Pasted ${rows.length} payments`,"",rows.map(r=>r.date).join(", ").slice(0,120));saveF();$("pyPaste").value="";renderFinance()}};
+$("fExport").onclick=()=>{const b=new Blob([JSON.stringify({kind:"advisor-backup",v:1,at:new Date().toISOString(),finance:F,holdings:H},null,1)],{type:"application/json"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);a.download="my-finances-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+$("fImport").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const j=JSON.parse(await f.text());
+  if(j.finance&&j.finance.profile){F=j.finance;saveF()}if(j.holdings&&Array.isArray(j.holdings.lots)){H=j.holdings;saveH()}else if(Array.isArray(j.lots)){H={lots:j.lots,fee:j.fee||{},goal:j.goal||{}};saveH()}
+  logChange("Backup","Restored from file",f.name,"");renderFinance()}catch(_){alert("That file isn't a backup from this page.")}e.target.value=""};
+
+/* ---------- tabs ---------- */
+function showTab(t){const fin=t==="finances";$("finWrap").style.display=fin?"":"none";$("advWrap").style.display=fin?"none":"";$("bestWrap").style.display=fin?"none":"";
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  try{history.replaceState(null,"",fin?"#finances":"#")}catch(e){}if(fin)renderFinanceNow()}
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+
+/* ---------- detail ---------- */
+let chart=null,openKey=null;
+const ord=n=>n+(n%100>=11&&n%100<=13?"th":["th","st","nd","rd"][n%10]||"th");
+function factorDetail(a,k){
+  const m=a.m||{},p=a.last,c=a.ccy;
+  const rk=v=>a.mkt!=="ALT"&&m.peers?`ranks in the ${ord(Math.round(v))} percentile of ${m.peers} ${{US:"US",SA:"Saudi",EG:"Egyptian"}[a.mkt]} stocks · `:"";
+  if(k==="tech")return `${rk(a.f.tech)}12-month momentum (excl. last month) ${pct(m.mom12)} · last month ${pct(m.mom1)} · RSI ${m.rsi??"—"} · price ${p>m.sma50?"above":"below"} 50-day avg (${fmt(m.sma50,c)}) · ${p>m.sma200?"above":"below"} 200-day avg · ${pct(m.hi52?p/m.hi52-1:null)} from 52-wk high · 3-month change ${pct(m.mom3m)}`;
+  if(k==="fund"){
+    if(a.mkt==="ALT")return `1-year price trend (no company financials for ${esc(a.name)})`;
+    if(!a.fundOk)return `Company financials not loaded yet, so a neutral 50 is used`;
+    const b=[rk(a.f.fund).replace(/ · $/,"")].filter(Boolean);if(m.revG!=null)b.push(`Revenue growth ${pct(m.revG)}`);if(m.epsG!=null)b.push(`Earnings growth ${pct(m.epsG)}`);if(m.roe!=null)b.push(`ROE ${p0(m.roe)}`);
+    if(m.margin!=null)b.push(`Profit margin ${p0(m.margin)}`);if(m.de!=null)b.push(`Debt/Equity ${m.de}`);if(m.div!=null)b.push(`Dividend ${p0(m.div)}`);return b.join(" · ")}
+  if(k==="val"){
+    if(a.mkt==="ALT")return `Price vs its 200-day average (fair value ≈ ${fmt(a.fair,c)}, ${pct(a.fair/p-1)})`;
+    const b=[rk(a.f.val).replace(/ · $/,"")].filter(Boolean);if(m.pe)b.push(`P/E ${m.pe}${m.sectorPE?` vs sector median ${m.sectorPE}`:""}`);
+    if(m.target)b.push(`Analyst target ${fmt(m.target,c)} (${pct(m.target/p-1)}${m.analysts?`, ${m.analysts} analysts`:""}${m.rec?`, consensus "${String(m.rec).replace("_"," ")}"`:""})`);
+    b.push(`Model fair value ${fmt(a.fair,c)} (${pct(a.fair/p-1)})`);return b.join(" · ")}
+  if(k==="macro")return `${esc(m.macroTxt||"Market conditions")}${m.newsN?` · news tone ${m.newsSent>0.1?"positive":m.newsSent<-0.1?"negative":"neutral"} (${m.newsN} headlines)`:""}`;
+  return `${rk(a.f.risk)}Annual volatility ${p0(m.annVol)} · ${pct(m.dd)} from 1-yr high${m.beta?` · beta ${m.beta}`:""}`;
+}
+function justification(a,x){
+  const fs=FACT.map(([k,l])=>({k,l,v:a.f[k]})).sort((p,q)=>q.v-p.v);
+  const strong=fs.filter(f=>f.v>=60),weak=fs.filter(f=>f.v<45);
+  const lead={BUY:`The model rates ${esc(a.name)} a <b class="up">BUY</b> with a composite score of ${x.score}/100.`,SELL:`The model rates ${esc(a.name)} a <b class="down">SELL</b> with a composite score of ${x.score}/100.`,HOLD:`The model rates ${esc(a.name)} a <b style="color:var(--hold)">HOLD</b> (score ${x.score}/100): the evidence is mixed.`}[x.decision];
+  const why={tech:a.mkt==="ALT"?"price trend and momentum are favourable":"its 12-month momentum is stronger than most peers",fund:a.mkt==="ALT"?"the 1-year trend is strong":"the business is growing profitably with a manageable balance sheet",val:a.mkt==="ALT"?"the price is not stretched above its long-term average":"the price is below the model's fair-value estimate",macro:"market conditions and recent news are supportive",risk:"volatility and drawdown risk are relatively low"};
+  const whyNot={tech:a.mkt==="ALT"?"the price trend is weak":"its 12-month momentum is weaker than most peers",fund:a.mkt==="ALT"?"the 1-year trend is weak":"growth and profitability are soft",val:a.mkt==="ALT"?"the price is stretched above its long-term average":"the stock looks expensive against its fair value",macro:"market conditions or news are a headwind",risk:"price swings are large, so keep the position smaller"};
+  const ps=[lead];
+  if(strong.length)ps.push(`<b>Supporting:</b> ${strong.slice(0,3).map(f=>`${f.l} (${f.v.toFixed(0)}): ${why[f.k]}`).join("; ")}.`);
+  if(weak.length)ps.push(`<b>Against:</b> ${weak.slice(0,2).map(f=>`${f.l} (${f.v.toFixed(0)}): ${whyNot[f.k]}`).join("; ")}.`);
+  ps.push(`<b>Confidence ${x.conf}%</b> reflects how far the score is from the decision threshold and how much the five factors agree (spread ${x.sd.toFixed(0)} pts). ${x.conf>=70?"The factors broadly agree.":"The factors disagree, so treat this call with caution."}${a.edge&&x.decision==="BUY"&&a.edge.n>=8?` <b>Track record on ${esc(a.sym)}:</b> past BUY signals worked ${(a.edge.hit*100).toFixed(0)}% of the time vs ${(a.edge.base*100).toFixed(0)}% when buying on any random day, so confidence was ${x.edgeAdj>=0?"raised":"lowered"} by ${Math.abs(x.edgeAdj).toFixed(0)} points.${a.edge.hit<a.edge.base?" The model has not had an edge on this asset; treat the call with extra caution.":""}`:""}`);
+  ps.push(x.decision==="BUY"?`<b>Plan:</b> buy in three steps starting near ${fmt(x.entry,a.ccy)} rather than all at once, take half the profit at ${fmt(x.t1,a.ccy)} and the rest at ${fmt(x.target,a.ccy)}, and exit if it closes below ${fmt(x.stop,a.ccy)}. Reward-to-risk ≈ ${x.rr.toFixed(1)}×.`
+   :x.decision==="SELL"?`<b>Plan:</b> if you hold it, sell half now and the rest on any bounce toward ${fmt(x.entry,a.ccy)}; the model sees downside toward ${fmt(x.target,a.ccy)}. Re-check if it closes above ${fmt(x.stop,a.ccy)}.`
+   :`<b>Plan:</b> keep existing shares; add on dips toward ${fmt(x.entry,a.ccy)}, trim some above ${fmt(x.target,a.ccy)}, and review if it breaks ${fmt(x.stop,a.ccy)}.`);
+  return ps.map(p=>`<p>${p}</p>`).join("");
+}
+function iterations(a,x){
+  const sw=(a.vol||0.015)*Math.sqrt(5);
+  if(x.decision==="BUY")return[["Buy 1","40%",x.entry,"At or below entry"],["Buy 2","35%",x.entry*(1-1.1*sw),"On a pull-back"],["Buy 3","25%",x.entry*(1-1.8*sw),"Deeper dip, above stop"],["Sell 1","50%",x.t1,"Take first profit, move stop to entry"],["Sell 2","50%",x.target,"Final target (or trailing stop)"]];
+  if(x.decision==="SELL")return[["Sell 1","50%",a.last,"Now"],["Sell 2","50%",x.entry,"On a bounce"],["Re-buy watch","—",x.target,"Re-evaluate near downside target"]];
+  return[["Add","25%",x.entry,"Only on a dip"],["Trim","25%",x.target,"Lock in some gains"],["Review","—",x.stop,"Thesis breaks below here"]];
+}
+/* ---------- similar past signals (same rules as the Python backtest) ---------- */
+function decide4(t,v,m,r){const sc=(t*22+v*20+m*18+r*16)/76,mu=(t+v+m+r)/4,sd=Math.sqrt(((t-mu)**2+(v-mu)**2+(m-mu)**2+(r-mu)**2)/4);
+  return{sc,dec:sc>=60?"BUY":sc<=44?"SELL":"HOLD"}}
+function evaluate(c,b,dv,i,dec,td){ // returns [worked, excess vs market, days held, own return]
+  const n=Math.min(td,c.length-1-i);if(n<5)return null;
+  const p=c[i],v=dv[i]??0.015,sw=v*Math.sqrt(5);let je=n;
+  if(dec==="BUY"){const tg=p*(1+Math.max(0.6*v*Math.sqrt(td),0.03)),sp=p*(1-2.2*sw);for(let j=1;j<=n;j++)if(c[i+j]>=tg||c[i+j]<=sp){je=j;break}}
+  else if(dec==="SELL"){const tg=p*(1-Math.max(0.5*v*Math.sqrt(td),0.03)),sp=p*(1+2*sw);for(let j=1;j<=n;j++)if(c[i+j]<=tg||c[i+j]>=sp){je=j;break}}
+  const ret=c[i+je]/p-1,bret=b&&b[i]&&b[i+je]?b[i+je]/b[i]-1:0,ex=ret-bret;
+  return[dec==="BUY"?ex>0:dec==="SELL"?ex<0:ex>-0.03,ex,je,ret]}
+function similar(D,dec,score,days){
+  const c=D.c,td=Math.max(5,Math.round(days*5/7)),out=[];let lastI=null;
+  for(let i=c.length-6;i>260;i--){
+    if(c[i]==null||D.tech[i]==null)continue;
+    const h=decide4(D.tech[i],D.val[i],D.macro[i],D.risk[i]);
+    if(h.dec!==dec||Math.abs(h.sc-score)>10)continue;
+    if(lastI!==null&&lastI-i<15)continue;
+    const r=evaluate(c,D.b,D.dvol,i,dec,td);if(!r)continue;lastI=i;
+    out.push({date:D.dates[i],px:c[i],score:Math.round(h.sc),worked:r[0],ex:r[1],ret:r[3],held:Math.round(r[2]*7/5)});
+    if(out.length>=10)break}
+  return out}
+async function openDetail(k){
+  const a=A[k];if(!a||!a.f)return;openKey=k;
+  const own=S.plan==="usr"&&a.mkt!=="ALT";const w=own?S.w:sysWeights();
+  const x=analyse(a,w),it=iterations(a,x);
+  const colors={tech:"#2563eb",fund:"#16a34a",val:"#7c3aed",macro:"#d97706",risk:"#0891b2"};
+  $("modal").innerHTML=`<div class="mh">
+   <div><div class="hint">${{SA:"Tadawul",US:"US",EG:"Egypt (EGX)"}[a.mkt]||"Global"} · ${esc(a.sector)}</div><h3>${esc(a.name)} <span class="muted mono" style="font-size:15px">${esc(a.sym)}</span></h3>
+   <div class="mono" style="font-size:22px;margin-top:4px"><span data-px="${esc(k)}">${fmt(a.last,a.ccy)}</span> <span class="small ${a.chg>=0?"up":"down"}" data-ch="${esc(k)}">${pct(a.chg)}</span></div></div>
+   <div style="display:flex;gap:16px;align-items:center;margin-left:24px"><span class="pill bigpill ${x.decision}">${x.decision}</span>
+   <div class="conf"><div class="ring" style="--p:${x.conf}"><b>${x.conf}%</b></div><div class="small muted">Confidence<br><span class="hint">Score ${x.score}/100 · ${own?"your":"system"} weights</span></div></div></div>
+   <button class="close" onclick="closeDetail()">Close ✕</button></div>
+  <div class="stats">
+   <div class="stat"><span>${x.decision==="SELL"?"Exit at / above":"Entry price"}</span><b>${fmt(x.entry,a.ccy)}</b><small>${pct(x.entry/a.last-1)} vs now</small></div>
+   <div class="stat"><span>${x.decision==="SELL"?"Downside target":"Target"}</span><b class="${x.decision==="SELL"?"down":"up"}">${fmt(x.target,a.ccy)}</b><small>${x.decision==="BUY"?"1st: "+fmt(x.t1,a.ccy):"&nbsp;"}</small></div>
+   <div class="stat"><span>${x.decision==="SELL"?"Invalidation":"Stop-loss"}</span><b class="down">${fmt(x.stop,a.ccy)}</b><small>${pct(x.stop/x.entry-1)} from entry</small></div>
+   <div class="stat"><span>Holding period</span><b>${holdTxt(x.days)}</b><small>review ${new Date(Date.now()+x.days*864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</small></div>
+   <div class="stat"><span>Expected move</span><b class="${x.decision==="SELL"?"down":"up"}">${x.decision==="SELL"?"−":"+"}${(Math.abs(x.exp)*100).toFixed(1)}%</b><small>if target is hit</small></div>
+   <div class="stat"><span>Reward : risk</span><b>${x.rr.toFixed(1)}×</b><small>${x.rr>=2?"favourable":x.rr>=1.3?"acceptable":"thin"}</small></div>
+  </div>
+  <div class="cols"><div>
+    <div style="height:290px"><canvas id="cv"></canvas></div>
+    <div class="hint" style="margin-top:4px">12 months of real prices, 50-day average, and the forecast range (shaded, ~80% band) over the holding period. Dashed: entry, target, stop.</div>
+    <div class="sec"><h4>Why this call</h4><div class="just">${justification(a,x)}</div></div>
+    <div class="sec news"><h4>Latest news</h4><div id="newsBox" class="empty">Loading headlines…</div></div>
+  </div><div>
+    <div class="sec" style="margin-top:0"><h4>Factor breakdown</h4>${FACT.map(([fk,l])=>`<div class="fac"><div>${l}</div><div class="tr"><i style="width:${a.f[fk]}%;background:${colors[fk]}"></i></div><div class="mono" style="text-align:right">${a.f[fk].toFixed(0)}</div><div class="det">${factorDetail(a,fk)}</div></div>`).join("")}</div>
+    <div class="sec"><h4>Staged buy / sell plan</h4><table class="tbl-s"><thead><tr><th>Step</th><th>Size</th><th>Price</th><th style="text-align:left;padding-left:12px">When</th></tr></thead><tbody>${it.map(s=>`<tr style="cursor:default"><td>${s[0]}</td><td class="mono" style="text-align:left">${s[1]}</td><td class="mono">${fmt(s[2],a.ccy)}</td><td class="small muted" style="text-align:left;padding-left:12px;white-space:normal">${s[3]}</td></tr>`).join("")}</tbody></table></div>
+  </div></div>
+  <div class="sec"><h4>Similar past signals on ${esc(a.sym)}</h4><div id="simBox" class="empty">Searching 5 years of history…</div></div>
+  <div class="disc">Forecasts are probabilities based on past patterns, not guarantees; prices can gap past stop-loss levels. Prices come from Yahoo Finance (typically ~15 minutes delayed) and this site refreshes about every 10–20 minutes. This tool supports your own research and is not financial advice.</div>`;
+  $("scrim").classList.add("open");
+  try{
+    const D=await data("detail/"+safe(k)+".json");
+    if(openKey!==k)return;
+    const L=260,d={dates:D.dates.slice(-L),close:D.c.slice(-L),sma50:D.sma50.slice(-L),news:D.news||[],similar:similar(D,x.decision,x.score,x.days)};
+    drawChart(a,x,d);
+    $("newsBox").className="";
+    $("newsBox").innerHTML=d.news.length?`<ul>${d.news.slice(0,6).map(n=>`<li><span class="sent ${n.sent>0.1?"p":n.sent<-0.1?"n":"z"}">${n.sent>0.1?"POS":n.sent<-0.1?"NEG":"NEU"}</span><span>${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)} <span class="hint">${esc(n.publisher||"")}${n.time?" · "+new Date(n.time).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""}</span></span></li>`).join("")}</ul>`:`<div class="empty">No recent headlines found.</div>`;
+    const sim=d.similar||[];
+    if(!sim.length){$("simBox").innerHTML=`No past ${x.decision} calls with a similar score in the last 3 years.`;return}
+    const hits=sim.filter(s=>s.worked).length,avg=sim.reduce((s,y)=>s+y.ex,0)/sim.length,BN=(a.m&&a.m.bench)||"the market",rel=a.mkt!=="ALT";
+    // baseline: the same target/stop rule applied on every day in the history, signal or not
+    const td=Math.max(5,Math.round(x.days*5/7));let bw=0,bn=0,br=0;
+    for(let i=260;i<D.c.length-6;i+=3){const rr=evaluate(D.c,D.b,D.dvol,i,x.decision,td);if(rr){bn++;bw+=rr[0]?1:0;br+=rr[1]}}
+    const hr=hits/sim.length,base=bn?bw/bn:null,edge=base==null?null:hr-base;
+    $("simBox").className="";
+    $("simBox").innerHTML=`<div class="small muted" style="margin-bottom:6px">Past dates when the model's price-based factors gave the same call with a similar score, followed on real prices with the same target and stop rules. ${rel?`"Worked" means it <b>beat the ${BN}</b> over the same period (a SELL worked if it lagged it).`:`"Worked" means the price rose (fell for a SELL).`} <b style="color:var(--text)">${hits} of ${sim.length}</b> worked (${(hr*100).toFixed(0)}%) · average ${rel?"vs "+BN:"result"} <b class="${avg>=0?"up":"down"}">${pct(avg)}</b>.</div>
+     ${base!=null?`<div class="verdict ${edge>=0.05?"good":edge<=-0.05?"bad":"mid"}" style="margin:6px 0 10px">For comparison, using the same rule on <b>any random day</b> worked <b>${(base*100).toFixed(0)}%</b> of the time (average ${pct(br/bn)}${rel?" vs "+BN:""}). ${edge>=0.05?`These signals did <b>better than random</b> by ${(edge*100).toFixed(0)} points, a sign the model has an edge on ${esc(a.sym)}.`:edge<=-0.05?`These signals did <b>worse than random</b> by ${(-edge*100).toFixed(0)} points. The model has <b>not</b> had an edge on ${esc(a.sym)}, so don't rely on this call.`:`These signals did <b>about the same as random</b>, so the call adds little beyond the general trend.`} ${sim.length<6?"Only a few past signals, so this comparison is rough.":""}</div>`:""}
+     <table class="tbl-s"><thead><tr><th>Date</th><th>Call</th><th>Score</th><th>Price then</th><th>Held</th><th>Result</th>${rel?`<th>vs ${BN}</th>`:""}<th>Outcome</th></tr></thead><tbody>${sim.map(s=>`<tr style="cursor:default"><td class="mono">${new Date(s.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})}</td><td style="text-align:left"><span class="pill ${x.decision}">${x.decision}</span></td><td class="mono">${s.score}</td><td class="mono">${fmt(s.px,a.ccy)}</td><td class="mono">${s.held}d</td><td class="mono ${s.ret>=0?"up":"down"}">${pct(s.ret)}</td>${rel?`<td class="mono ${s.ex>=0?"up":"down"}">${pct(s.ex)}</td>`:""}<td>${s.worked?'<span class="up">✓ worked</span>':'<span class="down">✗ missed</span>'}</td></tr>`).join("")}</tbody></table>`;
+  }catch(e){if($("simBox"))$("simBox").textContent="Could not load history: "+e.message}
+}
+function closeDetail(){$("scrim").classList.remove("open");openKey=null;if(chart){chart.destroy();chart=null}}
+$("scrim").onclick=e=>{if(e.target===$("scrim"))closeDetail()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
+function drawChart(a,x,d){
+  if(typeof Chart==="undefined"){$("cv").parentElement.innerHTML='<div class="note">Chart library could not load.</div>';return}
+  const h=d.close,n=h.length,F=Math.min(x.days,120),last=a.last||h[n-1];
+  const labels=d.dates.map(s=>new Date(s).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"}));
+  for(let i=1;i<=F;i++){labels.push(new Date(Date.now()+i*864e5*7/5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"2-digit"}))}
+  const dirn=x.decision==="HOLD"?0:x.target/last-1;
+  const mid=[],upB=[],loB=[];const v=a.vol||0.015;
+  for(let i=0;i<n+F;i++){if(i<n-1){mid.push(null);upB.push(null);loB.push(null);continue}
+    const t=i-(n-1),m=last*(1+dirn*Math.min(t/F,1)),s=v*Math.sqrt(t)*last;mid.push(m);upB.push(m+1.28*s);loB.push(m-1.28*s)}
+  const line=val=>Array(n+F).fill(val),pad=Array(F).fill(null);
+  if(chart)chart.destroy();
+  chart=new Chart($("cv"),{type:"line",data:{labels,datasets:[
+    {label:"Price",data:[...h,...pad],borderColor:"#14202e",borderWidth:1.6,pointRadius:0,tension:.15},
+    {label:"50-day avg",data:[...d.sma50,...pad],borderColor:"#2563eb",borderWidth:1.2,pointRadius:0},
+    {label:"Forecast high",data:upB,borderColor:"rgba(0,0,0,0)",backgroundColor:"rgba(124,58,237,.10)",pointRadius:0,fill:"+1"},
+    {label:"Forecast low",data:loB,borderColor:"rgba(0,0,0,0)",pointRadius:0,fill:false},
+    {label:"Forecast",data:mid,borderColor:"#7c3aed",borderDash:[4,3],borderWidth:1.4,pointRadius:0},
+    {label:"Entry",data:line(x.entry),borderColor:"rgba(20,32,46,.5)",borderDash:[6,4],borderWidth:1,pointRadius:0},
+    {label:"Target",data:line(x.target),borderColor:x.decision==="SELL"?"#dc2626":"#16a34a",borderDash:[6,4],borderWidth:1,pointRadius:0},
+    {label:"Stop",data:line(x.stop),borderColor:"#dc2626",borderDash:[2,3],borderWidth:1,pointRadius:0}]},
+   options:{maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:"#5b6878",boxWidth:12,font:{size:11},filter:i=>!["Forecast high","Forecast low"].includes(i.text)}},
+     tooltip:{callbacks:{label:c=>c.raw==null?null:`${c.dataset.label}: ${fmtT(c.raw,a.ccy)}`}}},
+    scales:{x:{ticks:{color:"#8794a5",maxTicksLimit:8,font:{size:10}},grid:{color:"#eef1f5"}},
+     y:{ticks:{color:"#8794a5",font:{size:10},callback:val=>fmtT(val,a.ccy)},grid:{color:"#eef1f5"}}}}});
+}
+
+/* ---------- updates: the site is rebuilt every ~10–20 min; check for new data every minute ---------- */
+function marketsOpen(){
+  const now=new Date(),ny=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})),ri=new Date(now.toLocaleString("en-US",{timeZone:"Asia/Riyadh"}));
+  const nm=ny.getHours()*60+ny.getMinutes(),rm=ri.getHours()*60+ri.getMinutes();
+  const ca=new Date(now.toLocaleString("en-US",{timeZone:"Africa/Cairo"})),cm=ca.getHours()*60+ca.getMinutes();
+  return{us:ny.getDay()>=1&&ny.getDay()<=5&&nm>=570&&nm<960,sa:ri.getDay()<=4&&rm>=600&&rm<900,eg:ca.getDay()<=4&&cm>=600&&cm<870}}
+function marketChips(){const o=marketsOpen();
+  $("mktUS").innerHTML=`<span class="dot ${o.us?"live":""}"></span>US ${o.us?"open":"closed"}`;
+  $("mktSA").innerHTML=`<span class="dot ${o.sa?"live":""}"></span>Tadawul ${o.sa?"open":"closed"}`;
+  $("mktEG").innerHTML=`<span class="dot ${o.eg?"live":""}"></span>EGX ${o.eg?"open":"closed"}`}
+function freshness(){
+  if(!STATUS){$("feedLabel").textContent="Yahoo Finance";return}
+  const ago=Math.max(0,Math.round(Date.now()/1000-STATUS.builtAt));
+  $("feedLabel").textContent=`Yahoo Finance · updated ${ago<90?"just now":ago<5400?Math.round(ago/60)+" min ago":Math.round(ago/3600)+" h ago"} · auto-refreshes`;
+  $("liveDot").className="dot"+(ago<1800?" live":"");
+  if(STATUS.withFinancials<STATUS.assets){$("finChip").style.display="";$("finChip").textContent=`Financials loaded for ${STATUS.withFinancials}/${STATUS.assets}`}else $("finChip").style.display="none";
+}
+async function loadUniverse(){
+  const list=await data("universe.json"),prev={};for(const k in A)prev[k]=A[k].last;
+  A={};for(const a of list)A[a.k]=a;
+  renderSectors();renderAll();
+  for(const a of list){const p=prev[a.k];if(p==null||p===a.last)continue;
+    document.querySelectorAll(`[data-px="${CSS.escape(a.k)}"]`).forEach(el=>el.classList.add(a.last>p?"flash-up":"flash-down"))}
+}
+async function refresh(){
+  try{const s=await data("status.json");
+    if(!STATUS||s.builtAt!==STATUS.builtAt){STATUS=s;if(s.egpPerUsd)EGPUSD=s.egpPerUsd;TRACK=await data("track.json").catch(()=>({}));FWD=await data("forward.json").catch(()=>({}));await loadUniverse();renderTrack();renderScore()}
+    STATUS=s}catch(e){}
+  freshness()}
+function clockTick(){$("clock").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Asia/Riyadh"})+" Riyadh";freshness();marketChips()}
+
+/* ---------- wiring ---------- */
+function seg(id,key,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.onclick=()=>{el.querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");S[key]=b.dataset.v;cb&&cb();renderAll()})}
+seg("mktSeg","mkt",()=>{S.off.clear();renderSectors();renderTrack()});
+seg("riskSeg","risk");seg("horSeg","hor");seg("planSeg","plan");
+const setAmt=()=>{S.amount=Math.max(0,+$("amount").value||0);$("amtSar").textContent="= "+fmt1(S.amount*SAR,"SAR")};
+$("amount").oninput=()=>{setAmt();renderPlan()};setAmt();
+$("addForm").onsubmit=e=>{e.preventDefault();const v=$("addSym").value.trim().toUpperCase();if(!v)return;
+  const alias={GOLD:"XAU",SILVER:"XAG",BITCOIN:"BTC"};const q=alias[v]||v;
+  const a=Object.values(A).find(a=>a.sym.toUpperCase()===q||a.k.toUpperCase()===q)||Object.values(A).find(a=>a.name.toUpperCase().includes(q));
+  if(!a){$("addSym").value="";$("addSym").placeholder="Not tracked: add to watchlist.txt";return}
+  if(a.mkt!=="ALT"&&a.mkt!==S.mkt)$("mktSeg").querySelector(`[data-v="${a.mkt}"]`).click();
+  $("addSym").value="";openDetail(a.k)};
+
+(async function start(){
+  renderWeights();clockTick();setInterval(clockTick,1000);
+  try{STATUS=await data("status.json");if(STATUS.egpPerUsd)EGPUSD=STATUS.egpPerUsd;TRACK=await data("track.json").catch(()=>({}));FWD=await data("forward.json").catch(()=>({}));await loadUniverse()}
+  catch(e){$("loadMsg").textContent="No data published yet.";$("loadHint").textContent="The first update runs a few minutes after setup. This page will reload automatically.";setTimeout(()=>location.reload(),60000);return}
+  $("loading").classList.add("hide");freshness();renderTrack();renderScore();if(location.hash==="#finances")showTab("finances");
+  setInterval(refresh,60000);
+})();
+</script>
+</body>
+</html>
