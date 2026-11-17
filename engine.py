@@ -271,6 +271,23 @@ def evaluate(c, b, dvol, i, dec, days_td):
     worked = ex > 0 if dec == "BUY" else ex < 0 if dec == "SELL" else ex > -0.03
     return bool(worked), ex, j_exit, ret
 
+def shrink_p(wins, n, k=60):
+    """Probability of beating the index, pulled toward 50% when there are few cases."""
+    return (wins + 0.5 * k) / (n + k)
+
+def decide_p(p, base):
+    """BUY only if clearly better than this market's usual chance of beating the index (and above 50%);
+    SELL if clearly worse (or below 45%). Everything else is HOLD."""
+    if p >= max(0.5, base + 0.04): return "BUY"
+    if p <= min(0.45, base - 0.04) or p <= base - 0.06: return "SELL"
+    return "HOLD"
+
+def calib_lookup(calib, score):
+    if not calib: return {"p": 0.5, "ex": 0.0, "n": 0}
+    for b in calib:
+        if score <= b["hi"]: return b
+    return calib[-1]
+
 # --------------------------------------------------------------------------------------
 # Store
 # --------------------------------------------------------------------------------------
@@ -452,41 +469,90 @@ class Store:
                     a["f"] = {k: round(float(v), 1) for k, v in f.items()}
                     a["m"]["peers"] = n
 
-    # ---------- backtest ----------
-    def hist_decisions(self, y):
+    # ---------- evidence-based model: weights, calibration, backtest ----------
+    TESTED = ("tech", "val", "macro", "risk")      # factors with history; fundamentals can't be tested on free data
+
+    def hist_X(self, y):
         fh = self.fhist.get(y)
         if fh is None: return None
         cols = {"tech": "tech_r" if "tech_r" in fh else "tech", "val": "val_r" if "val_r" in fh else "val",
                 "macro": "macro", "risk": "risk_r" if "risk_r" in fh else "risk"}
-        X = pd.DataFrame({k: fh[c].fillna(fh[k]) if c != k else fh[k] for k, c in cols.items()})
-        w = {k: SYS_W[k] for k in cols}; tot = sum(w.values())
-        score = sum(X[k] * w[k] for k in w) / tot
-        sd = X.std(axis=1, ddof=0)
-        return score, sd, X
+        return pd.DataFrame({k: (fh[c].fillna(fh[k]) if c != k else fh[k]) for k, c in cols.items()})
+
+    def market_weights(self, mkt, keys, H=63):
+        """Weights from evidence: average cross-sectional rank correlation (IC) between each factor and the
+        next 3 months' return vs the index, sampled weekly. Negative or zero ICs get no extra weight;
+        the result is blended 50/50 with equal weights so one noisy period can't dominate."""
+        ics = {k: [] for k in self.TESTED}
+        if mkt != "ALT" and len(keys) >= 8:
+            fwd = pd.DataFrame({y: (self.fhist[y]["c"].shift(-H) / self.fhist[y]["c"] - 1)
+                                   - (self.fhist[y]["b"].shift(-H) / self.fhist[y]["b"] - 1) for y in keys})
+            Xs = {y: self.hist_X(y) for y in keys}
+            for k in self.TESTED:
+                F = pd.DataFrame({y: Xs[y][k] for y in keys})
+                idx = F.index.intersection(fwd.index)
+                for d in idx[260:-H:5]:
+                    f, r = F.loc[d], fwd.loc[d]
+                    ok = f.notna() & r.notna()
+                    if ok.sum() >= 8:
+                        c = f[ok].rank().corr(r[ok].rank())
+                        if not math.isnan(c): ics[k].append(c)
+        ic = {k: (float(np.mean(v)) if v else 0.0) for k, v in ics.items()}
+        pos = {k: max(v, 0) for k, v in ic.items()}; tot = sum(pos.values())
+        w = {k: 0.5 * 0.25 + 0.5 * (pos[k] / tot if tot > 0 else 0.25) for k in self.TESTED}
+        w["fund"] = float(np.mean(list(w.values())))         # untested: given the average weight, no more
+        t = sum(w.values())
+        return {k: round(v / t * 100, 1) for k, v in w.items()}, {k: round(v, 3) for k, v in ic.items()}, {k: len(v) for k, v in ics.items()}
 
     def compute_track(self, days_td=63):
-        """Backtest on real prices, judged against each market's index. A random-day baseline
-        (the same buy rule on every day) shows whether signals add anything."""
+        """Backtest judged against each market's index, with evidence-based weights and a calibration table:
+        for each score band, how often did the asset beat its index over the next 3 months?"""
         out = {}; edge = {}
         for mkt in ("US", "SA", "EG", "ALT"):
-            stats = {d: [] for d in ("BUY", "HOLD", "SELL")}; bands = {"90%+": [], "70–89%": [], "50–69%": [], "<50%": []}
+            keys = [y for y, a in self.assets.items() if a["mkt"] == mkt and y in self.fhist]
+            if not keys: continue
+            W, IC, ICn = self.market_weights(mkt, keys, days_td)
+            tw = {k: W[k] for k in self.TESTED}; tt = sum(tw.values())
+            samples = []                                   # (asset, i, score, fwd excess)
+            per = {}
+            for y in keys:
+                X = self.hist_X(y); fh = self.fhist[y]
+                sc = sum(X[k] * tw[k] for k in tw) / tt
+                c = fh["c"].values; b = fh["b"].values
+                per[y] = (sc, c, b, fh["dvol"].values)
+                for i in range(260, len(c) - days_td, 3):
+                    if math.isnan(sc.iloc[i]) or not b[i] or math.isnan(b[i + days_td]): continue
+                    ex = (c[i + days_td] / c[i] - 1) - (b[i + days_td] / b[i] - 1)
+                    samples.append((y, i, float(sc.iloc[i]), ex))
+            calib = []
+            base_rate = float(np.mean([x[3] > 0 for x in samples])) if samples else 0.5
+            if len(samples) >= 50:
+                scores = np.array([s[2] for s in samples]); exs = np.array([s[3] for s in samples])
+                edges = np.unique(np.quantile(scores, np.linspace(0, 1, 11)))
+                for lo, hi in zip(edges[:-1], edges[1:]):
+                    m = (scores >= lo) & (scores <= hi)
+                    n = int(m.sum())
+                    if n == 0: continue
+                    wins = float((exs[m] > 0).sum())
+                    calib.append({"lo": round(float(lo), 2), "hi": round(float(hi), 2), "n": n,
+                                  "raw": round(wins / n, 3), "p": round(shrink_p(wins, n), 3), "ex": round(float(np.mean(exs[m])), 4)})
+            stats = {d: [] for d in ("BUY", "HOLD", "SELL")}; bands = {"+8 pts or more": [], "+4 to +8 pts": [], "−4 to +4 pts": [], "−4 pts or less": []}
             base_all = []
-            for y, a in list(self.assets.items()):
-                if a["mkt"] != mkt or y not in self.fhist: continue
-                sc, sd, _ = self.hist_decisions(y); fh = self.fhist[y]
-                c = fh["c"].values; b = fh["b"].values; dv = fh["dvol"].values
-                buys, base = [], []
+            for y in keys:
+                sc, c, b, dv = per[y]; buys, base = [], []
                 for i in range(260, len(c) - 10, 3):
                     if math.isnan(sc.iloc[i]): continue
-                    dec, conf = decide(sc.iloc[i], sd.iloc[i])
+                    p = calib_lookup(calib, float(sc.iloc[i]))["p"] if calib else 0.5
+                    dec = decide_p(p, base_rate)
                     rb = evaluate(c, b, dv, i, "BUY", days_td)
                     if rb is not None: base.append(rb)
                     r = rb if dec == "BUY" else evaluate(c, b, dv, i, dec, days_td)
                     if r is None: continue
                     if dec == "BUY": buys.append(r)
                     stats[dec].append(r)
-                    k = "90%+" if conf >= 90 else "70–89%" if conf >= 70 else "50–69%" if conf >= 50 else "<50%"
-                    bands[k].append(r[0])
+                    d = p - base_rate
+                    k = "+8 pts or more" if d >= 0.08 else "+4 to +8 pts" if d >= 0.04 else "−4 to +4 pts" if d > -0.04 else "−4 pts or less"
+                    bands[k].append(bool(r[1] > 0))   # actually beat the index?
                 base_all += base
                 if base:
                     edge[y] = {"n": len(buys), "hit": num(np.mean([x[0] for x in buys]) if buys else None, 3),
@@ -497,7 +563,8 @@ class Store:
                         "baseline": {"n": len(base_all), "hit": num(np.mean([x[0] for x in base_all]) if base_all else None),
                                      "avg": num(np.mean([x[1] for x in base_all]) if base_all else None)},
                         "bands": [{"b": k, "n": len(v), "hit": num(np.mean(v) if v else None)} for k, v in bands.items()],
-                        "days": days_td, "bench": BENCH_NAME[mkt]}
+                        "days": days_td, "bench": BENCH_NAME[mkt], "weights": W, "ic": IC, "icN": ICn,
+                        "calib": calib, "samples": len(samples), "assets": len(keys), "base": round(base_rate, 3)}
         with self.lock:
             self.track = out
             for y, e in edge.items():
@@ -527,23 +594,20 @@ class Store:
 # Server-side copy of the page's decision rule (system weights, "Months" horizon),
 # used to log the daily top picks for the live scorecard.
 # --------------------------------------------------------------------------------------
-def analyse_sys(a):
-    f = a["f"]; w = SYS_W; tot = sum(w.values())
-    score = sum(f[k] * w[k] for k in w) / tot
-    vals = list(f.values()); mu = sum(vals) / len(vals); sd = math.sqrt(sum((v - mu) ** 2 for v in vals) / len(vals))
-    dec = "BUY" if score >= 60 else "SELL" if score <= 44 else "HOLD"
-    dist = score - 60 if dec == "BUY" else 44 - score if dec == "SELL" else min(score - 44, 60 - score)
-    E = a.get("edge") or {}
-    adj = cl((E["hit"] - E["base"]) * 100 * 0.8, -25, 10) if dec == "BUY" and E.get("n", 0) >= 8 and E.get("hit") is not None and E.get("base") is not None else 0
-    conf = round(cl(48 + dist * 1.6 + (25 - sd) * 0.9 + adj, 20, 94))
-    return {"score": round(score), "dec": dec, "conf": conf}
+def analyse_sys(a, track):
+    """Independent mode (same as the page): evidence-based weights + calibrated probability."""
+    t = track.get(a["mkt"], {}); w = t.get("weights") or SYS_W; tot = sum(w.values())
+    f = a["f"]; score = sum(f[k] * w[k] for k in w) / tot
+    cb = calib_lookup(t.get("calib"), score); p = cb["p"]
+    dec = decide_p(p, t.get("base", 0.5))
+    return {"score": round(score), "dec": dec, "conf": round(p * 100), "p": p}
 
-def top_picks(assets, mkt=None, n=10):
+def top_picks(assets, track, mkt=None, n=10):
     order = {"BUY": 0, "HOLD": 1, "SELL": 2}
     rows = []
     for a in assets.values():
         if not a.get("f") or not a.get("last"): continue
         if mkt and a["mkt"] != mkt: continue
-        x = analyse_sys(a); rows.append((a, x))
-    rows.sort(key=lambda r: (order[r[1]["dec"]], -r[1]["score"] * r[1]["conf"]))
+        x = analyse_sys(a, track); rows.append((a, x))
+    rows.sort(key=lambda r: (order[r[1]["dec"]], -r[1]["p"], -r[1]["score"]))
     return rows[:n]

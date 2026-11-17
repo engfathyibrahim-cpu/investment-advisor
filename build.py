@@ -140,7 +140,7 @@ def update_scorecard(st):
     logged = {(p["d"], p["m"]) for p in picks}
     for lst in ("ALL", "US", "SA", "EG"):
         if (today, lst) in logged: continue
-        rows = E.top_picks(st.assets, None if lst == "ALL" else lst, 10)
+        rows = E.top_picks(st.assets, st.track, None if lst == "ALL" else lst, 10)
         for rank, (a, x) in enumerate(rows, 1):
             b = bench_of(a)
             if not a["last"] or (a["mkt"] != "ALT" and not b): continue
