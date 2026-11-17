@@ -1044,6 +1044,7 @@ function freshness(){
   const ago=Math.max(0,Math.round(Date.now()/1000-STATUS.builtAt));
   $("feedLabel").textContent=`Yahoo Finance · updated ${ago<90?"just now":ago<5400?Math.round(ago/60)+" min ago":Math.round(ago/3600)+" h ago"} · auto-refreshes`;
   $("liveDot").className="dot"+(ago<1800?" live":"");
+  if(STATUS.lastError&&STATUS.lastErrorAt>STATUS.builtAt){$("feedLabel").textContent=`Yahoo didn't respond to the latest update · showing data from ${ago<5400?Math.round(ago/60)+" min":Math.round(ago/3600)+" h"} ago`;$("liveDot").className="dot"}
   if(STATUS.withFinancials<STATUS.assets){$("finChip").style.display="";$("finChip").textContent=`Financials loaded for ${STATUS.withFinancials}/${STATUS.assets}`}else $("finChip").style.display="none";
 }
 async function loadUniverse(){
